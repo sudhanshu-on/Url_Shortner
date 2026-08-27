@@ -227,6 +227,55 @@
             font-size: 0.85rem;
         }
 
+        /* Building URL Loading Animation */
+        .building-box {
+            margin-top: 1.5rem;
+            padding: 1.25rem;
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px dashed rgba(99, 102, 241, 0.4);
+            border-radius: 14px;
+            display: none;
+            text-align: center;
+        }
+
+        .spinner-glow {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(99, 102, 241, 0.2);
+            border-radius: 50%;
+            border-top-color: #818cf8;
+            animation: spin 0.8s ease-in-out infinite;
+            margin-bottom: 0.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .typewriter-text {
+            font-family: var(--font-mono);
+            font-size: 1.1rem;
+            color: #a5b4fc;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .cursor-blink {
+            display: inline-block;
+            width: 8px;
+            height: 1.1rem;
+            background-color: #818cf8;
+            vertical-align: middle;
+            margin-left: 2px;
+            animation: blink 0.7s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
         /* Redirect Tester & Analytics List */
         .link-list {
             display: flex;
@@ -327,8 +376,17 @@
                         <label for="ttlSeconds">Link Expiration TTL in Seconds (Optional)</label>
                         <input type="number" id="ttlSeconds" placeholder="e.g. 3600 for 1 hour">
                     </div>
-                    <button type="submit" class="btn-submit">Generate Short Link</button>
+                    <button type="submit" id="submitBtn" class="btn-submit">Generate Short Link</button>
                 </form>
+
+                <!-- Building URL Loading Animation Box -->
+                <div id="buildingBox" class="building-box">
+                    <div class="spinner-glow"></div>
+                    <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.3rem;">Building Base62 Short URL...</div>
+                    <div>
+                        <span id="buildingUrlText" class="typewriter-text"></span><span class="cursor-blink"></span>
+                    </div>
+                </div>
 
                 <div id="resultBox" class="result-box">
                     <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.4rem;">Shortened URL Created:</div>
@@ -548,6 +606,16 @@
             const customAlias = document.getElementById('customAlias').value;
             const ttlSeconds = document.getElementById('ttlSeconds').value;
 
+            const submitBtn = document.getElementById('submitBtn');
+            const resultBox = document.getElementById('resultBox');
+            const buildingBox = document.getElementById('buildingBox');
+            const buildingUrlText = document.getElementById('buildingUrlText');
+
+            resultBox.style.display = 'none';
+            buildingBox.style.display = 'block';
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.6';
+
             try {
                 const res = await fetch('/api/v1/shorten', {
                     method: 'POST',
@@ -561,17 +629,40 @@
 
                 const data = await res.json();
                 if (!res.ok) {
+                    buildingBox.style.display = 'none';
+                    submitBtn.disabled = false;
+                    submitBtn.style.opacity = '1';
                     alert(data.error || "Error shortening URL");
                     return;
                 }
 
-                document.getElementById('resultUrl').innerText = data.short_url;
-                document.getElementById('resultBox').style.display = 'block';
+                // Typewriter Animation Effect
+                const targetText = data.short_url;
+                buildingUrlText.innerText = '';
+                let index = 0;
 
-                // Refresh link lists and metrics
-                loadActiveLinks();
-                fetchSystemStats();
+                const typeInterval = setInterval(() => {
+                    if (index < targetText.length) {
+                        buildingUrlText.innerText += targetText.charAt(index);
+                        index++;
+                    } else {
+                        clearInterval(typeInterval);
+                        setTimeout(() => {
+                            buildingBox.style.display = 'none';
+                            document.getElementById('resultUrl').innerText = data.short_url;
+                            resultBox.style.display = 'block';
+                            submitBtn.disabled = false;
+                            submitBtn.style.opacity = '1';
+                            loadActiveLinks();
+                            fetchSystemStats();
+                        }, 500);
+                    }
+                }, 40);
+
             } catch (err) {
+                buildingBox.style.display = 'none';
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1';
                 alert("Failed to connect to backend service.");
             }
         });
