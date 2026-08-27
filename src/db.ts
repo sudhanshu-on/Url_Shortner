@@ -1,111 +1,134 @@
-import sqlite3 from 'sqlite3';
-import { open, Database } from 'sqlite';
-import path from 'path';
+import mongoose, { Schema, Document } from 'mongoose';
 import { UrlRecord, ClickLogEntry } from './types';
 
-let dbInstance: Database | null = null;
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/url_shortener';
 
-export async function initDatabase(): Promise<Database> {
-    if (dbInstance) return dbInstance;
+export interface IUrlDocument extends Document {
+    shortCode: string;
+    originalUrl: string;
+    customAlias?: string | null;
+    createdAt: string;
+    expiresAt?: string | null;
+    clickCount: number;
+    clicksLog: ClickLogEntry[];
+}
 
-    const dbPath = path.join(__dirname, '../urls.db');
-    dbInstance = await open({
-        filename: dbPath,
-        driver: sqlite3.Database
-    });
+const ClickLogSchema = new Schema<ClickLogEntry>({
+    timestamp: { type: String, required: true },
+    userAgent: { type: String, default: 'Unknown' },
+    latencyMs: { type: String, required: true },
+    cached: { type: Boolean, required: true }
+}, { _id: false });
 
-    // Create tables
-    await dbInstance.exec(`
-        CREATE TABLE IF NOT EXISTS urls (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            short_code TEXT UNIQUE NOT NULL,
-            original_url TEXT NOT NULL,
-            custom_alias TEXT,
-            created_at TEXT NOT NULL,
-            expires_at TEXT,
-            click_count INTEGER DEFAULT 0
-        );
+const UrlSchema = new Schema<IUrlDocument>({
+    shortCode: { type: String, required: true, unique: true, index: true },
+    originalUrl: { type: String, required: true },
+    customAlias: { type: String, default: null },
+    createdAt: { type: String, required: true },
+    expiresAt: { type: String, default: null, index: true },
+    clickCount: { type: Number, default: 0 },
+    clicksLog: [ClickLogSchema]
+});
 
-        CREATE TABLE IF NOT EXISTS clicks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            short_code TEXT NOT NULL,
-            timestamp TEXT NOT NULL,
-            user_agent TEXT,
-            latency_ms TEXT,
-            cached INTEGER,
-            FOREIGN KEY(short_code) REFERENCES urls(short_code)
-        );
+export const UrlModel = mongoose.model<IUrlDocument>('Url', UrlSchema);
 
-        CREATE INDEX IF NOT EXISTS idx_short_code ON urls(short_code);
-    `);
-
-    return dbInstance;
+export async function initDatabase(): Promise<void> {
+    if (mongoose.connection.readyState === 1) return;
+    
+    console.log(`[Database] Attempting connection to MongoDB at: ${MONGODB_URI}`);
+    try {
+        await mongoose.connect(MONGODB_URI, {
+            serverSelectionTimeoutMS: 5000
+        });
+        console.log(`[Database] ✅ Connected successfully to MongoDB (${MONGODB_URI})`);
+    } catch (error: any) {
+        console.error(`\n[Database Error] ❌ Could not connect to MongoDB.`);
+        console.error(`Error details: ${error.message}`);
+        console.error(`\n💡 How to resolve:`);
+        console.error(`1. If using local MongoDB, start the service: 'sudo systemctl start mongod'`);
+        console.error(`2. If using MongoDB Atlas / remote host, export your connection string:`);
+        console.error(`   export MONGODB_URI="mongodb+srv://<user>:<password>@cluster.mongodb.net/url_shortener"\n`);
+    }
 }
 
 export async function saveUrlRecord(record: UrlRecord): Promise<void> {
-    const db = await initDatabase();
-    await db.run(
-        `INSERT INTO urls (short_code, original_url, custom_alias, created_at, expires_at, click_count)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [record.shortCode, record.originalUrl, record.customAlias, record.createdAt, record.expiresAt, record.clickCount]
-    );
+    await initDatabase();
+    if (mongoose.connection.readyState !== 1) {
+        throw new Error("Database connection not ready. Check MongoDB connection.");
+    }
+    const doc = new UrlModel({
+        shortCode: record.shortCode,
+        originalUrl: record.originalUrl,
+        customAlias: record.customAlias,
+        createdAt: record.createdAt,
+        expiresAt: record.expiresAt,
+        clickCount: record.clickCount,
+        clicksLog: record.clicksLog || []
+    });
+    await doc.save();
 }
 
 export async function getUrlRecord(shortCode: string): Promise<UrlRecord | null> {
-    const db = await initDatabase();
-    const row = await db.get(`SELECT * FROM urls WHERE short_code = ?`, [shortCode]);
-    if (!row) return null;
+    await initDatabase();
+    if (mongoose.connection.readyState !== 1) return null;
 
-    const clicks = await db.all(`SELECT * FROM clicks WHERE short_code = ? ORDER BY id DESC LIMIT 10`, [shortCode]);
+    const doc = await UrlModel.findOne({ shortCode }).lean();
+    if (!doc) return null;
 
     return {
-        id: row.id,
-        shortCode: row.short_code,
-        originalUrl: row.original_url,
-        customAlias: row.custom_alias,
-        createdAt: row.created_at,
-        expiresAt: row.expires_at,
-        clickCount: row.click_count,
-        clicksLog: clicks.map(c => ({
-            timestamp: c.timestamp,
-            userAgent: c.user_agent,
-            latencyMs: c.latency_ms,
-            cached: Boolean(c.cached)
-        }))
+        id: doc._id.toString(),
+        shortCode: doc.shortCode,
+        originalUrl: doc.originalUrl,
+        customAlias: doc.customAlias || null,
+        createdAt: doc.createdAt,
+        expiresAt: doc.expiresAt || null,
+        clickCount: doc.clickCount,
+        clicksLog: doc.clicksLog || []
     };
 }
 
 export async function getAllUrlRecords(): Promise<UrlRecord[]> {
-    const db = await initDatabase();
-    const rows = await db.all(`SELECT * FROM urls ORDER BY id DESC`);
-    return rows.map(row => ({
-        id: row.id,
-        shortCode: row.short_code,
-        originalUrl: row.original_url,
-        customAlias: row.custom_alias,
-        createdAt: row.created_at,
-        expiresAt: row.expires_at,
-        clickCount: row.click_count,
-        clicksLog: []
+    await initDatabase();
+    if (mongoose.connection.readyState !== 1) return [];
+
+    const docs = await UrlModel.find().sort({ _id: -1 }).lean();
+    return docs.map(doc => ({
+        id: doc._id.toString(),
+        shortCode: doc.shortCode,
+        originalUrl: doc.originalUrl,
+        customAlias: doc.customAlias || null,
+        createdAt: doc.createdAt,
+        expiresAt: doc.expiresAt || null,
+        clickCount: doc.clickCount,
+        clicksLog: doc.clicksLog || []
     }));
 }
 
 export async function recordClick(shortCode: string, entry: ClickLogEntry): Promise<void> {
-    const db = await initDatabase();
-    await db.run(`UPDATE urls SET click_count = click_count + 1 WHERE short_code = ?`, [shortCode]);
-    await db.run(
-        `INSERT INTO clicks (short_code, timestamp, user_agent, latency_ms, cached)
-         VALUES (?, ?, ?, ?, ?)`,
-        [shortCode, entry.timestamp, entry.userAgent, entry.latencyMs, entry.cached ? 1 : 0]
+    await initDatabase();
+    if (mongoose.connection.readyState !== 1) return;
+
+    await UrlModel.updateOne(
+        { shortCode },
+        { 
+            $inc: { clickCount: 1 },
+            $push: { clicksLog: { $each: [entry], $slice: -20 } }
+        }
     );
 }
 
 export async function getSystemStatsFromDb(): Promise<{ totalShortened: number; totalRedirects: number }> {
-    const db = await initDatabase();
-    const shortenedRow = await db.get(`SELECT COUNT(*) as count FROM urls`);
-    const redirectsRow = await db.get(`SELECT COUNT(*) as count FROM clicks`);
+    await initDatabase();
+    if (mongoose.connection.readyState !== 1) return { totalShortened: 0, totalRedirects: 0 };
+
+    const totalShortened = await UrlModel.countDocuments();
+    const aggregateResult = await UrlModel.aggregate([
+        { $group: { _id: null, totalClicks: { $sum: "$clickCount" } } }
+    ]);
+    const totalRedirects = aggregateResult[0]?.totalClicks || 0;
+
     return {
-        totalShortened: shortenedRow?.count || 0,
-        totalRedirects: redirectsRow?.count || 0
+        totalShortened,
+        totalRedirects
     };
 }

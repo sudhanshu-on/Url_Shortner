@@ -1,5 +1,5 @@
 export interface UrlRecord {
-    id: number;
+    id: string | null;
     shortCode: string;
     originalUrl: string;
     customAlias: string | null;

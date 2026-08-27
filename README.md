@@ -1,13 +1,13 @@
-# SwiftURL - Scalable High-Performance URL Shortener Service
+# ShortURL - Scalable High-Performance URL Shortener Service
 
-SwiftURL is a high-availability, low-latency URL Shortener service built with **TypeScript**, **Node.js**, **Express**, and an **in-memory LRU Cache architecture**. It is designed based on enterprise distributed system principles capable of scaling to millions of URL creations and billions of redirects per day with sub-100ms redirect latency.
+ShortURL is a high-availability, low-latency URL Shortener service built with **TypeScript**, **Node.js**, **Express**, and an **in-memory LRU Cache architecture**. It is designed based on enterprise distributed system principles capable of scaling to millions of URL creations and billions of redirects per day with sub-100ms redirect latency.
 
 ---
 
 ## 🌟 Key Features
 
 - **🚀 Low Latency Redirects (< 5ms)**: Uses an LRU (Least Recently Used) memory cache layer for hot URL lookups before falling back to persistent storage.
-- **🎲 Base62 Encoding & Token Generation**: Generates 7-character non-guessable short codes (4.39+ Trillion unique key combinations).
+- **🎲 Base62 Encoding & Token Generation**: Generates 7-character non-guessable short codes (3.52+ Trillion unique key combinations).
 - **🔤 Custom Alias Support**: Allows users to specify personalized slugs (e.g., `app.com/launch2026`).
 - **⏳ Link Expiration (TTL)**: Optional expiration time (in seconds) after which short links return HTTP `410 Gone`.
 - **📊 Real-Time Click Analytics & Telemetry**: Logs click counts, user agents, redirect latency, and cache hit/miss statistics.

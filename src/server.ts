@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -27,9 +30,9 @@ let cacheMisses = 0;
 
 // Initialize DB on server start
 initDatabase().then(() => {
-    console.log("[Database] SQLite database initialized (urls.db). Zero seed data loaded.");
+    console.log("[Database] Persistent database initialized (urls.db). Zero seed data loaded.");
 }).catch(err => {
-    console.error("[Database Error] Failed to initialize SQLite DB", err);
+    console.error("[Database Error] Failed to initialize SQLite database:", err);
 });
 
 function isValidUrl(stringUrl: string): boolean {
@@ -76,7 +79,7 @@ app.post('/api/v1/shorten', async (req: Request<{}, {}, ShortenRequest>, res: Re
         : null;
 
     const record: UrlRecord = {
-        id: 0, // Assigned by SQLite
+        id: null, // Assigned by SQLite
         shortCode,
         originalUrl: url,
         customAlias: custom_alias || null,
@@ -179,9 +182,11 @@ app.get('/:short_code', async (req: Request, res: Response, next: NextFunction):
     if (!record) {
         fromCache = false;
         cacheMisses++;
+        console.log(`[LOOKUP MISS] 🗄️ Querying MongoDB Database for code: /${short_code}`);
         record = await getUrlRecord(short_code);
     } else {
         cacheHits++;
+        console.log(`[LOOKUP HIT] ⚡ Served from LRU Memory Cache for code: /${short_code}`);
     }
 
     if (!record) {
