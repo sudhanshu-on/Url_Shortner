@@ -19,11 +19,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Local database
-*.db
-*.sqlite
-*.sqlite3
-
 # Coverage
 coverage/
 
