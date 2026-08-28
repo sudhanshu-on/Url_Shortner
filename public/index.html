@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShortURL | Routing</title>
+    <title>ShortURL | Loading</title>
+    <link rel="stylesheet" href="/sw-animations.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@800;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
@@ -98,6 +99,11 @@
             text-transform: uppercase;
             position: relative;
             z-index: 1;
+            animation: sw-pulse 1.4s ease-in-out infinite;
+        }
+
+        .poster {
+            animation: sw-scaleIn 0.3s ease both;
         }
 
         h1 {
@@ -119,6 +125,7 @@
             z-index: 1;
         }
     </style>
+    <script src="/sw-animations.js"></script>
     <script>
         async function routeUser() {
             try {
@@ -126,15 +133,15 @@
                 if (res.ok) {
                     const data = await res.json();
                     if (data.user && data.user.role === 'ADMIN') {
-                        window.location.href = '/admin';
+                        SwAnim.navigateTo('/admin');
                     } else {
-                        window.location.href = '/dashboard';
+                        SwAnim.navigateTo('/dashboard');
                     }
                 } else {
-                    window.location.href = '/login';
+                    SwAnim.navigateTo('/login');
                 }
             } catch(e) {
-                window.location.href = '/login';
+                SwAnim.navigateTo('/login');
             }
         }
         routeUser();
@@ -146,5 +153,7 @@
         <h1>ShortURL Routing</h1>
         <p>Checking authentication state</p>
     </main>
+
+<script src="/sw-animations.js"></script>
 </body>
 </html>

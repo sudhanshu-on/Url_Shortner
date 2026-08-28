@@ -1,0 +1,442 @@
+/*
+ * SwiftURL — Shared Animation System
+ * Compatible with the brutalist/constructivist design system.
+ * All animations respect prefers-reduced-motion.
+ */
+
+/* ─── KEYFRAMES ──────────────────────────────────────────────── */
+
+@keyframes sw-fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes sw-fadeInUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sw-fadeInDown {
+    from { opacity: 0; transform: translateY(-14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sw-fadeInLeft {
+    from { opacity: 0; transform: translateX(-16px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes sw-fadeInRight {
+    from { opacity: 0; transform: translateX(16px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes sw-scaleIn {
+    from { opacity: 0; transform: scale(0.94); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes sw-shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position:  400px 0; }
+}
+
+@keyframes sw-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+@keyframes sw-toast-in {
+    from { opacity: 0; transform: translateX(110%); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes sw-toast-out {
+    from { opacity: 1; transform: translateX(0); }
+    to   { opacity: 0; transform: translateX(110%); }
+}
+
+@keyframes sw-modal-backdrop-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes sw-modal-content-in {
+    from { opacity: 0; transform: scale(0.96) translateY(10px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes sw-float-widget {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-3px); }
+}
+
+@keyframes sw-stagger-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sw-count-up {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sw-error-shake {
+    0%, 100% { transform: translateX(0); }
+    20%       { transform: translateX(-6px); }
+    40%       { transform: translateX(6px); }
+    60%       { transform: translateX(-4px); }
+    80%       { transform: translateX(4px); }
+}
+
+@keyframes sw-page-wipe-in {
+    from { transform: scaleX(1); }
+    to   { transform: scaleX(0); }
+}
+
+@keyframes sw-page-wipe-out {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+}
+
+/* ─── UTILITY CLASSES ────────────────────────────────────────── */
+
+.sw-fade-in          { animation: sw-fadeIn        0.3s ease both; }
+.sw-fade-in-up       { animation: sw-fadeInUp      0.35s ease both; }
+.sw-fade-in-down     { animation: sw-fadeInDown    0.3s ease both; }
+.sw-fade-in-left     { animation: sw-fadeInLeft    0.3s ease both; }
+.sw-fade-in-right    { animation: sw-fadeInRight   0.3s ease both; }
+.sw-scale-in         { animation: sw-scaleIn       0.3s ease both; }
+
+/* Stagger delays for list items */
+.sw-stagger > *:nth-child(1) { animation-delay: 0.04s; }
+.sw-stagger > *:nth-child(2) { animation-delay: 0.08s; }
+.sw-stagger > *:nth-child(3) { animation-delay: 0.12s; }
+.sw-stagger > *:nth-child(4) { animation-delay: 0.16s; }
+.sw-stagger > *:nth-child(5) { animation-delay: 0.20s; }
+.sw-stagger > *:nth-child(6) { animation-delay: 0.24s; }
+.sw-stagger > *:nth-child(7) { animation-delay: 0.28s; }
+.sw-stagger > *:nth-child(8) { animation-delay: 0.32s; }
+
+/* ─── SKELETON LOADERS ───────────────────────────────────────── */
+
+.sw-skeleton {
+    background: linear-gradient(
+        90deg,
+        #d6c89a 25%,
+        #e8d8a8 50%,
+        #d6c89a 75%
+    );
+    background-size: 800px 100%;
+    animation: sw-shimmer 1.4s ease-in-out infinite;
+    border: 2px solid rgba(17,17,17,0.12);
+}
+
+.sw-skeleton-text {
+    height: 1em;
+    border-radius: 0;
+    margin-bottom: 0.4em;
+    display: block;
+}
+
+.sw-skeleton-text.short  { width: 42%; }
+.sw-skeleton-text.medium { width: 68%; }
+.sw-skeleton-text.long   { width: 90%; }
+.sw-skeleton-text.full   { width: 100%; }
+
+.sw-skeleton-value {
+    height: 2.2rem;
+    width: 72px;
+    border-radius: 0;
+    display: block;
+}
+
+.sw-skeleton-row {
+    height: 52px;
+    width: 100%;
+    border-radius: 0;
+    margin-bottom: 3px;
+    display: block;
+}
+
+.sw-skeleton-badge {
+    height: 1.6rem;
+    width: 64px;
+    border-radius: 0;
+    display: inline-block;
+}
+
+/* ─── PAGE TRANSITION OVERLAY ────────────────────────────────── */
+
+#sw-page-curtain {
+    position: fixed;
+    inset: 0;
+    background: var(--red, #d71920);
+    z-index: 9999;
+    pointer-events: none;
+    transform: scaleX(0);
+    transform-origin: left;
+}
+
+#sw-page-curtain.sw-curtain-exit {
+    animation: sw-page-wipe-out 0.28s cubic-bezier(0.77,0,0.18,1) forwards;
+}
+
+#sw-page-curtain.sw-curtain-enter {
+    transform: scaleX(1);
+    transform-origin: right;
+    animation: sw-page-wipe-in 0.28s cubic-bezier(0.77,0,0.18,1) forwards;
+}
+
+/* ─── TOAST NOTIFICATIONS ────────────────────────────────────── */
+
+#sw-toast-container {
+    position: fixed;
+    top: 1.25rem;
+    right: 1.25rem;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    pointer-events: none;
+}
+
+.sw-toast {
+    min-width: 240px;
+    max-width: 340px;
+    background: var(--black, #111111);
+    color: var(--paper, #f7efd8);
+    border: 3px solid var(--black, #111111);
+    padding: 0.75rem 1rem;
+    font-size: 0.82rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    font-family: 'Inter', sans-serif;
+    box-shadow: 5px 5px 0 rgba(17,17,17,0.35);
+    pointer-events: auto;
+    animation: sw-toast-in 0.28s cubic-bezier(0.22,1,0.36,1) both;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+}
+
+.sw-toast.sw-toast-success {
+    background: var(--blue, #154c8b);
+    border-color: var(--black, #111111);
+    box-shadow: 5px 5px 0 var(--black, #111111);
+}
+
+.sw-toast.sw-toast-error {
+    background: var(--red, #d71920);
+    border-color: var(--black, #111111);
+    box-shadow: 5px 5px 0 var(--black, #111111);
+}
+
+.sw-toast.sw-toast-info {
+    background: var(--black, #111111);
+    border-left: 5px solid var(--blue, #154c8b);
+}
+
+.sw-toast.sw-toast-copy {
+    background: var(--black, #111111);
+    border-left: 5px solid var(--blue, #154c8b);
+}
+
+.sw-toast.sw-exiting {
+    animation: sw-toast-out 0.22s ease forwards;
+    pointer-events: none;
+}
+
+.sw-toast-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+/* ─── BUTTON ACTIVE STATE ────────────────────────────────────── */
+
+.sw-btn-active {
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.sw-btn-active:active {
+    transform: translate(3px, 3px) !important;
+}
+
+/* ─── BUTTON LOADING STATE ───────────────────────────────────── */
+
+.sw-btn-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.82;
+}
+
+.sw-btn-loading::after {
+    content: '';
+    position: absolute;
+    right: 0.9rem;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    margin-top: -7px;
+    border: 2.5px solid rgba(255,255,255,0.3);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: sw-spin 0.7s linear infinite;
+}
+
+/* ─── TOP PROGRESS BAR ───────────────────────────────────────── */
+
+#sw-progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 3px;
+    background: var(--red, #d71920);
+    z-index: 9998;
+    transition: width 0.25s ease, opacity 0.3s ease;
+    opacity: 0;
+}
+
+#sw-progress-bar.sw-progress-active {
+    opacity: 1;
+}
+
+/* ─── LINK ITEM ENTER ────────────────────────────────────────── */
+
+.sw-link-enter {
+    animation: sw-stagger-in 0.3s ease both;
+}
+
+/* ─── ERROR SHAKE ────────────────────────────────────────────── */
+
+.sw-shake {
+    animation: sw-error-shake 0.38s ease;
+}
+
+/* ─── MODAL ANIMATIONS ───────────────────────────────────────── */
+
+.sw-modal-backdrop {
+    animation: sw-modal-backdrop-in 0.22s ease both;
+}
+
+.sw-modal-content {
+    animation: sw-modal-content-in 0.28s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+/* ─── FLOATING WIDGET ────────────────────────────────────────── */
+
+.sw-widget-float {
+    animation: sw-float-widget 2.8s ease-in-out infinite;
+}
+
+/* ─── COUNT APPEAR ───────────────────────────────────────────── */
+
+.sw-count-appear {
+    animation: sw-count-up 0.28s ease both;
+}
+
+/* ─── EMPTY STATE ────────────────────────────────────────────── */
+
+.sw-empty-state {
+    animation: sw-fadeIn 0.4s ease both;
+    text-align: center;
+    padding: 2rem 1rem;
+}
+
+/* ── ShortURL Creature ───────────────────────────────────── */
+
+#shorturl-creature {
+    position: fixed;
+    left: 0;
+    top: 0;
+
+    width: 45px;
+    height: 45px;
+
+    z-index: 9999;
+    pointer-events: none;
+
+    color: #6366f1;
+
+    transform: translate3d(
+        var(--creature-x, 40px),
+        var(--creature-y, 40px),
+        0
+    );
+
+    transition:
+        transform 0.7s cubic-bezier(.22, 1, .36, 1);
+
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,.25));
+}
+
+#shorturl-creature .creature-svg {
+    width: 100%;
+    height: 100%;
+
+    animation: creatureBounce 0.35s infinite alternate ease-in-out;
+}
+
+#shorturl-creature .leg {
+    transform-origin: center;
+}
+
+#shorturl-creature .leg-1 {
+    animation: legMove 0.18s infinite alternate;
+}
+
+#shorturl-creature .leg-2 {
+    animation: legMove 0.18s infinite alternate-reverse;
+}
+
+#shorturl-creature .leg-3 {
+    animation: legMove 0.22s infinite alternate;
+}
+
+@keyframes creatureBounce {
+    from {
+        transform: translateY(0);
+    }
+
+    to {
+        transform: translateY(-4px);
+    }
+}
+
+@keyframes legMove {
+    from {
+        transform: rotate(-10deg);
+    }
+
+    to {
+        transform: rotate(10deg);
+    }
+}
+
+/* ─── REDUCED MOTION ─────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+    #shorturl-creature {
+        
+        transition: none;
+    }
+
+    #shorturl-creature .creature-svg,
+    #shorturl-creature .leg {
+        animation: none;
+    }
+}
+
+/* ─── REDUCED MOTION ─────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+    }
+}

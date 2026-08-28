@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShortURL Admin</title>
+    <title>ShortURL | Admin</title>
+    <link rel="stylesheet" href="/sw-animations.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@500;700;800;900&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
@@ -183,6 +184,12 @@
             background: var(--black);
             color: var(--paper);
         }
+
+        /* Animation additions */
+        .topbar    { animation: sw-fadeInDown 0.3s ease both; }
+        .stat-grid { animation: sw-fadeInUp   0.35s ease 0.05s both; }
+        .stat      { transition: background 0.15s ease; }
+        .signout   { transition: background 0.15s ease, color 0.15s ease; }
 
         .stat-grid {
             display: grid;
@@ -485,6 +492,7 @@
         </section>
     </main>
 
+    <script src="/sw-animations.js"></script>
     <script>
         const numberFormat = new Intl.NumberFormat();
 
@@ -497,35 +505,59 @@
             return value.toString().replace('ms', ' ms');
         }
 
+        function showStatSkeletons() {
+            ['statTotalShortened','statTotalRedirects','statActiveLinks','statExpiredLinks',
+             'statCacheHitRate','statAvgLatency'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.innerHTML = '';
+                    const skel = SwAnim.skeletonStatValue();
+                    el.appendChild(skel);
+                }
+            });
+
+            ['topLinksBody','systemPerformanceBody'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.innerHTML = '';
+                    el.appendChild(SwAnim.skeletonRows(4));
+                }
+            });
+        }
+
         async function verifyAdminAuth() {
             try {
                 const res = await fetch('/api/v1/auth/me');
                 if (!res.ok) {
-                    window.location.href = '/login';
+                    SwAnim.navigateTo('/login');
                     return;
                 }
 
                 const data = await res.json();
                 if (data.user.role !== 'ADMIN') {
-                    alert('403 Forbidden. Admin privileges required.');
-                    window.location.href = '/dashboard';
+                    SwAnim.toast('403 Forbidden. Admin privileges required.', 'error', 3000);
+                    setTimeout(() => SwAnim.navigateTo('/dashboard'), 1000);
                     return;
                 }
 
                 document.getElementById('usernameDisplay').innerText = data.user.username;
+                showStatSkeletons();
                 fetchAdminStats();
             } catch (e) {
-                window.location.href = '/login';
+                SwAnim.navigateTo('/login');
             }
         }
 
         async function fetchAdminStats() {
+            SwAnim.startProgress();
             try {
                 const res = await fetch('/api/v1/admin/stats');
+                SwAnim.finishProgress();
+
                 if (!res.ok) {
                     if (res.status === 403) {
-                        alert('Forbidden access to admin telemetry.');
-                        window.location.href = '/dashboard';
+                        SwAnim.toast('Forbidden access to admin telemetry.', 'error', 3000);
+                        setTimeout(() => SwAnim.navigateTo('/dashboard'), 1000);
                     }
                     return;
                 }
@@ -533,16 +565,18 @@
                 const data = await res.json();
                 const stats = data.system_stats;
 
-                document.getElementById('statTotalShortened').innerText = formatNumber(stats.totalShortened);
-                document.getElementById('statTotalRedirects').innerText = formatNumber(stats.totalRedirects);
-                document.getElementById('statActiveLinks').innerText = formatNumber(stats.activeLinksCount);
-                document.getElementById('statExpiredLinks').innerText = formatNumber(stats.expiredLinksCount);
-                document.getElementById('statCacheHitRate').innerText = stats.cacheHitRate;
-                document.getElementById('statAvgLatency').innerText = normalizeLatency(stats.avgRedirectLatencyMs);
+                // Animate stat value updates
+                SwAnim.animateValue(document.getElementById('statTotalShortened'), formatNumber(stats.totalShortened));
+                SwAnim.animateValue(document.getElementById('statTotalRedirects'), formatNumber(stats.totalRedirects));
+                SwAnim.animateValue(document.getElementById('statActiveLinks'), formatNumber(stats.activeLinksCount));
+                SwAnim.animateValue(document.getElementById('statExpiredLinks'), formatNumber(stats.expiredLinksCount));
+                SwAnim.animateValue(document.getElementById('statCacheHitRate'), stats.cacheHitRate);
+                SwAnim.animateValue(document.getElementById('statAvgLatency'), normalizeLatency(stats.avgRedirectLatencyMs));
 
                 renderTopLinks(data.top_links || []);
                 renderSystemPerformance(stats);
             } catch (e) {
+                SwAnim.finishProgress();
                 console.error('Failed to fetch admin telemetry', e);
             }
         }
@@ -552,17 +586,25 @@
             topBody.innerHTML = '';
 
             if (!links.length) {
-                topBody.innerHTML = '<div class="empty">No click data recorded yet.</div>';
+                const empty = document.createElement('div');
+                empty.className = 'empty sw-fade-in';
+                empty.textContent = 'No click data recorded yet.';
+                topBody.appendChild(empty);
                 return;
             }
 
-            links.forEach((item) => {
+            links.forEach((item, i) => {
                 const row = document.createElement('div');
-                row.className = 'row';
+                row.className = 'row sw-link-enter';
+                row.style.animationDelay = `${i * 0.06}s`;
                 row.innerHTML = `
                     <span class="code">/${item.shortCode}</span>
                     <span class="row-value">${formatNumber(item.clickCount)}</span>
                 `;
+                row.addEventListener('animationend', () => {
+                    row.classList.remove('sw-link-enter');
+                    row.style.animationDelay = '';
+                }, { once: true });
                 topBody.appendChild(row);
             });
         }
@@ -576,20 +618,28 @@
             ];
 
             performanceBody.innerHTML = '';
-            rows.forEach(([label, value]) => {
+            rows.forEach(([label, value], i) => {
                 const row = document.createElement('div');
-                row.className = 'row';
+                row.className = 'row sw-link-enter';
+                row.style.animationDelay = `${i * 0.06}s`;
                 row.innerHTML = `
                     <span>${label}</span>
                     <span class="row-value">${value}</span>
                 `;
+                row.addEventListener('animationend', () => {
+                    row.classList.remove('sw-link-enter');
+                    row.style.animationDelay = '';
+                }, { once: true });
                 performanceBody.appendChild(row);
             });
         }
 
         async function logout() {
+            SwAnim.startProgress();
             await fetch('/api/v1/auth/logout', { method: 'POST' });
-            window.location.href = '/login';
+            SwAnim.finishProgress();
+            SwAnim.toast('Signed out', 'info', 800);
+            setTimeout(() => SwAnim.navigateTo('/login'), 400);
         }
 
         verifyAdminAuth();

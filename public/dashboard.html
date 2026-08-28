@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShortURL | User Dashboard</title>
+    <title>ShortURL | Dashboard</title>
+    <link rel="stylesheet" href="/sw-animations.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@500;700;800;900&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
@@ -264,6 +265,22 @@
         .long-url-truncate { font-size: 0.82rem; color: var(--text-muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .click-badge { font-family: var(--font-mono); background: var(--black); color: var(--paper); padding: 0.3rem 0.6rem; border-radius: 0; font-size: 0.85rem; font-weight: 900; white-space: nowrap; }
 
+        .btn-submit:hover {
+            background: var(--red);
+            box-shadow: 3px 3px 0 var(--red);
+        }
+
+        /* Animation additions — no visual change */
+        header          { animation: sw-fadeInDown 0.3s ease both; }
+        .grid-layout    { animation: sw-fadeInUp   0.35s ease 0.05s both; }
+        .card           { transition: box-shadow 0.1s ease; }
+        .btn-copy       { transition: background 0.15s ease, color 0.15s ease; }
+        .btn-submit     { transition: background 0.18s ease, box-shadow 0.1s ease; }
+        .btn-logout     { transition: background 0.15s ease; }
+        input           { transition: box-shadow 0.18s ease; }
+        .link-item      { transition: background 0.15s ease; }
+        .link-item:hover { background: #fff8e8; }
+
         @media (max-width: 680px) {
             body { padding: 18px 10px; }
             header { flex-direction: column; align-items: stretch; gap: 16px; box-shadow: 6px 6px 0 var(--black); }
@@ -337,14 +354,14 @@
     </div>
 
     <!-- Floating Expired Links Corner Widget -->
-    <div id="floatingExpiredBar" onclick="toggleExpiredModal()" style="position: fixed; bottom: 24px; right: 24px; background: var(--red); border: 4px solid var(--black); border-radius: 0; padding: 0.75rem 1.25rem; color: #fff; font-size: 0.9rem; font-weight: 900; text-transform: uppercase; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; box-shadow: 7px 7px 0 var(--black); z-index: 999;">
+    <div id="floatingExpiredBar" onclick="toggleExpiredModal()" class="sw-widget-float" style="position: fixed; bottom: 24px; right: 24px; background: var(--red); border: 4px solid var(--black); border-radius: 0; padding: 0.75rem 1.25rem; color: #fff; font-size: 0.9rem; font-weight: 900; text-transform: uppercase; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; box-shadow: 7px 7px 0 var(--black); z-index: 999; animation: sw-fadeInRight 0.4s 0.5s ease both;">
         <span>Expired Links</span>
         <span id="floatingExpiredBadge" style="background: var(--black); color: var(--paper); border-radius: 0; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-family: var(--font-mono);">0</span>
     </div>
 
     <!-- Expired Links Modal Drawer -->
-    <div id="expiredModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(17,17,17,0.72); z-index: 1000; justify-content: center; align-items: center; padding: 1rem;">
-        <div style="background: var(--paper); border: 4px solid var(--black); border-radius: 0; width: 90%; max-width: 550px; padding: 2rem; position: relative; box-shadow: 10px 10px 0 var(--black);">
+    <div id="expiredModal" class="sw-modal-backdrop" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(17,17,17,0.72); z-index: 1000; justify-content: center; align-items: center; padding: 1rem;">
+        <div class="sw-modal-content" style="background: var(--paper); border: 4px solid var(--black); border-radius: 0; width: 90%; max-width: 550px; padding: 2rem; position: relative; box-shadow: 10px 10px 0 var(--black);">
             <button onclick="toggleExpiredModal()" style="position: absolute; top: 1rem; right: 1.2rem; background: var(--black); border: 3px solid var(--black); color: var(--paper); font-size: 1.2rem; cursor: pointer; width: 34px; height: 34px; line-height: 1;">&times;</button>
             <div style="display: inline-block; background: var(--red); color: #fff; font-family: var(--display); font-size: 1.15rem; font-weight: 900; margin-bottom: 1rem; padding: 10px 12px; text-transform: uppercase;">My Expired Links</div>
             <div class="link-list" id="expiredLinkList">
@@ -353,6 +370,7 @@
         </div>
     </div>
 
+    <script src="/sw-animations.js"></script>
     <script>
         let currentUser = null;
         let currentPage = 1;
@@ -365,7 +383,7 @@
             try {
                 const res = await fetch('/api/v1/auth/me');
                 if (!res.ok) {
-                    window.location.href = '/login';
+                    SwAnim.navigateTo('/login');
                     return;
                 }
                 const data = await res.json();
@@ -375,18 +393,29 @@
                 document.getElementById('roleBadge').innerText = currentUser.role;
 
                 if (currentUser.role === 'ADMIN') {
-                    window.location.href = '/admin';
+                    SwAnim.navigateTo('/admin');
                 } else {
+                    // Show skeleton loaders while links load
+                    showLinkSkeletons();
                     loadUserLinks();
                 }
             } catch(e) {
-                window.location.href = '/login';
+                SwAnim.navigateTo('/login');
             }
         }
 
+        function showLinkSkeletons() {
+            const activeListEl = document.getElementById('activeLinkList');
+            activeListEl.innerHTML = '';
+            const skels = SwAnim.skeletonRows(3, 'sw-skeleton sw-skeleton-row');
+            activeListEl.appendChild(skels);
+        }
+
         async function loadUserLinks() {
+            SwAnim.startProgress();
             try {
                 const res = await fetch('/api/v1/links');
+                SwAnim.finishProgress();
                 if (res.ok) {
                     const links = await res.json();
                     activeLinksData = [];
@@ -402,10 +431,13 @@
                     });
 
                     renderActivePage();
-                    document.getElementById('floatingExpiredBadge').innerText = expiredLinksData.length;
+                    const badge = document.getElementById('floatingExpiredBadge');
+                    SwAnim.animateValue(badge, expiredLinksData.length);
                 }
             } catch(err) {
-                console.error("Failed to load user links", err);
+                SwAnim.finishProgress();
+                console.error('Failed to load user links', err);
+                SwAnim.toast('Failed to load links. Retrying...', 'error', 2500);
             }
         }
 
@@ -430,7 +462,11 @@
             if (currentPage < 1) currentPage = 1;
 
             if (totalActive === 0) {
-                activeListEl.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 1rem;">No active links created yet.</div>';
+                const emptyDiv = document.createElement('div');
+                emptyDiv.className = 'sw-empty-state';
+                emptyDiv.style.cssText = 'color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 1rem;';
+                emptyDiv.textContent = 'No active links created yet.';
+                activeListEl.appendChild(emptyDiv);
                 document.getElementById('pageIndicator').innerText = `Page 1 of 1`;
                 document.getElementById('prevBtn').disabled = true;
                 document.getElementById('nextBtn').disabled = true;
@@ -440,9 +476,10 @@
             const startIndex = (currentPage - 1) * pageSize;
             const pageItems = activeLinksData.slice(startIndex, startIndex + pageSize);
 
-            pageItems.forEach(item => {
+            pageItems.forEach((item, i) => {
                 const div = document.createElement('div');
-                div.className = 'link-item';
+                div.className = 'link-item sw-link-enter';
+                div.style.animationDelay = `${i * 0.06}s`;
                 div.innerHTML = `
                     <div class="link-info">
                         <a href="/${item.short_code}" target="_blank" class="short-tag" onclick="scheduleLinksRefresh()">/${item.short_code}</a>
@@ -450,9 +487,13 @@
                     </div>
                     <div style="display:flex; align-items:center; gap:0.5rem;">
                         <div class="click-badge">${item.click_count} Clicks</div>
-                        <button class="btn-copy" onclick="deleteLink('${item.short_code}')" style="color:#fff; background:var(--red);">Delete</button>
+                        <button class="btn-copy sw-btn-active" onclick="deleteLink('${item.short_code}')" style="color:#fff; background:var(--red);">Delete</button>
                     </div>
                 `;
+                div.addEventListener('animationend', () => {
+                    div.classList.remove('sw-link-enter');
+                    div.style.animationDelay = '';
+                }, { once: true });
                 activeListEl.appendChild(div);
             });
 
@@ -467,29 +508,53 @@
         }
 
         async function deleteLink(shortCode) {
-            if (!confirm(`Are you sure you want to delete /${shortCode}?`)) return;
+            if (!confirm(`Delete /${shortCode}?`)) return;
+            SwAnim.startProgress();
             try {
                 const res = await fetch(`/api/v1/links/${shortCode}`, { method: 'DELETE' });
+                SwAnim.finishProgress();
                 if (res.ok) {
+                    SwAnim.toast(`/${shortCode} deleted`, 'info', 2000);
                     loadUserLinks();
                 } else {
-                    alert("Failed to delete link.");
+                    SwAnim.toast('Failed to delete link.', 'error', 2500);
                 }
-            } catch(e){}
+            } catch(e) {
+                SwAnim.finishProgress();
+                SwAnim.toast('Network error. Please try again.', 'error', 2500);
+            }
         }
 
         function toggleExpiredModal() {
             const modal = document.getElementById('expiredModal');
             const expiredList = document.getElementById('expiredLinkList');
+
             if (modal.style.display === 'none' || modal.style.display === '') {
                 modal.style.display = 'flex';
+                // Re-trigger modal animations
+                const backdrop = modal;
+                const content = modal.querySelector('div');
+                backdrop.style.animation = 'none';
+                void backdrop.offsetWidth;
+                backdrop.style.animation = '';
+                if (content) {
+                    content.style.animation = 'none';
+                    void content.offsetWidth;
+                    content.style.animation = '';
+                }
+
                 expiredList.innerHTML = '';
                 if (expiredLinksData.length === 0) {
-                    expiredList.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 1rem;">No expired links.</div>';
+                    const empty = document.createElement('div');
+                    empty.className = 'sw-empty-state';
+                    empty.style.cssText = 'color: var(--text-muted); font-size: 0.9rem;';
+                    empty.textContent = 'No expired links.';
+                    expiredList.appendChild(empty);
                 } else {
-                    expiredLinksData.forEach(item => {
+                    expiredLinksData.forEach((item, i) => {
                         const div = document.createElement('div');
-                        div.className = 'link-item';
+                        div.className = 'link-item sw-link-enter';
+                        div.style.animationDelay = `${i * 0.07}s`;
                         div.innerHTML = `
                             <div class="link-info">
                                 <span class="short-tag" style="color:var(--red); text-decoration:line-through;">/${item.short_code}</span>
@@ -497,6 +562,10 @@
                             </div>
                             <div class="click-badge" style="background:var(--red); color:#fff;">${item.click_count} Clicks</div>
                         `;
+                        div.addEventListener('animationend', () => {
+                            div.classList.remove('sw-link-enter');
+                            div.style.animationDelay = '';
+                        }, { once: true });
                         expiredList.appendChild(div);
                     });
                 }
@@ -504,6 +573,11 @@
                 modal.style.display = 'none';
             }
         }
+
+        // Close modal on backdrop click
+        document.getElementById('expiredModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) toggleExpiredModal();
+        });
 
         document.getElementById('shortenForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -518,7 +592,12 @@
 
             resultBox.style.display = 'none';
             buildingBox.style.display = 'block';
-            submitBtn.disabled = true;
+            buildingBox.style.animation = 'none';
+            void buildingBox.offsetWidth;
+            buildingBox.style.animation = 'sw-fadeIn 0.2s ease both';
+
+            SwAnim.setButtonLoading(submitBtn, 'Generating...');
+            SwAnim.startProgress();
 
             try {
                 const res = await fetch('/api/v1/shorten', {
@@ -528,10 +607,13 @@
                 });
 
                 const data = await res.json();
+                SwAnim.finishProgress();
+
                 if (!res.ok) {
                     buildingBox.style.display = 'none';
-                    submitBtn.disabled = false;
-                    alert(data.error || "Error shortening URL");
+                    SwAnim.clearButtonLoading(submitBtn);
+                    SwAnim.toast(data.error || 'Error shortening URL', 'error', 3000);
+                    SwAnim.shake(document.getElementById('longUrl'));
                     return;
                 }
 
@@ -540,26 +622,44 @@
                     buildingBox.style.display = 'none';
                     document.getElementById('resultUrl').innerText = data.short_url;
                     resultBox.style.display = 'block';
-                    submitBtn.disabled = false;
+                    resultBox.style.animation = 'none';
+                    void resultBox.offsetWidth;
+                    resultBox.style.animation = 'sw-scaleIn 0.28s ease both';
+                    SwAnim.clearButtonLoading(submitBtn);
+                    SwAnim.toast('Short URL created!', 'success', 2200);
                     loadUserLinks();
                 }, 400);
 
             } catch (err) {
+                SwAnim.finishProgress();
                 buildingBox.style.display = 'none';
-                submitBtn.disabled = false;
-                alert("Failed to connect to shortener service.");
+                SwAnim.clearButtonLoading(submitBtn);
+                SwAnim.toast('Failed to connect to shortener service.', 'error', 3000);
             }
         });
 
         function copyResult() {
             const urlText = document.getElementById('resultUrl').innerText;
-            navigator.clipboard.writeText(urlText);
-            alert("Short URL copied to clipboard!");
+            navigator.clipboard.writeText(urlText).then(() => {
+                SwAnim.toast('Short URL copied!', 'copy', 2000);
+            }).catch(() => {
+                // fallback
+                const ta = document.createElement('textarea');
+                ta.value = urlText;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                SwAnim.toast('Short URL copied!', 'copy', 2000);
+            });
         }
 
         async function logout() {
+            SwAnim.startProgress();
             await fetch('/api/v1/auth/logout', { method: 'POST' });
-            window.location.href = '/login';
+            SwAnim.finishProgress();
+            SwAnim.toast('Signed out', 'info', 800);
+            setTimeout(() => SwAnim.navigateTo('/login'), 400);
         }
 
         verifyUserAuth();
