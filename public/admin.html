@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShortURL Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@500;700;800;900&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #e9dfc7;
+            --paper: #f7efd8;
+            --paper-deep: #e1d0a8;
+            --black: #111111;
+            --red: #d71920;
+            --red-dark: #9f1117;
+            --blue: #154c8b;
+            --text: #111111;
+            --muted: #3f3a32;
+            --shadow: 12px 12px 0 #111111;
+            --mono: 'JetBrains Mono', monospace;
+            --display: 'Archivo Black', 'Inter', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at 84% 16%, rgba(17, 17, 17, 0.13) 0 2px, transparent 2px 14px),
+                radial-gradient(circle at 10% 78%, rgba(17, 17, 17, 0.1) 0 2px, transparent 2px 16px),
+                linear-gradient(135deg, transparent 0 46%, rgba(21, 76, 139, 0.72) 46% 50%, transparent 50%),
+                linear-gradient(135deg, transparent 0 58%, rgba(215, 25, 32, 0.9) 58% 64%, transparent 64%),
+                linear-gradient(18deg, transparent 0 69%, rgba(17, 17, 17, 0.92) 69% 73%, transparent 73%),
+                linear-gradient(104deg, transparent 0 8%, rgba(215, 25, 32, 0.86) 8% 12%, transparent 12%),
+                repeating-linear-gradient(90deg, rgba(17, 17, 17, 0.04) 0 1px, transparent 1px 42px),
+                var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            padding: 38px 18px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before,
+        body::after {
+            content: '';
+            position: fixed;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::before {
+            left: -92px;
+            bottom: -82px;
+            width: 340px;
+            height: 340px;
+            border: 36px solid var(--black);
+            transform: rotate(18deg);
+        }
+
+        body::after {
+            right: -34px;
+            top: 118px;
+            width: 260px;
+            height: 58px;
+            background: var(--blue);
+            border: 4px solid var(--black);
+            transform: rotate(-18deg);
+        }
+
+        .dashboard {
+            width: min(1060px, 100%);
+            margin: 0 auto;
+            background: var(--paper);
+            border: 4px solid var(--black);
+            border-radius: 0;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            position: relative;
+            isolation: isolate;
+            transform: rotate(-0.35deg);
+            z-index: 1;
+        }
+
+        .dashboard::before {
+            content: '';
+            position: absolute;
+            inset: -70px auto auto -28px;
+            width: 150px;
+            height: 360px;
+            background: var(--red);
+            transform: rotate(32deg);
+            z-index: -1;
+        }
+
+        .dashboard::after {
+            content: '';
+            position: absolute;
+            right: -42px;
+            top: 126px;
+            width: 170px;
+            height: 36px;
+            background: var(--blue);
+            transform: rotate(-18deg);
+            z-index: -1;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 82px;
+            padding: 0 26px;
+            border-bottom: 4px solid var(--black);
+            background: var(--red);
+            color: #ffffff;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .brand-mark {
+            width: 42px;
+            height: 42px;
+            border-radius: 0;
+            display: grid;
+            place-items: center;
+            background: var(--black);
+            color: var(--paper);
+            border: 3px solid #ffffff;
+            font-family: var(--display);
+            font-size: 1.25rem;
+            font-weight: 900;
+            letter-spacing: 0;
+            transform: rotate(-8deg);
+        }
+
+        .brand-title {
+            font-family: var(--display);
+            font-size: clamp(1.1rem, 4vw, 1.75rem);
+            font-weight: 900;
+            letter-spacing: 0;
+            line-height: 0.95;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .admin-meta {
+            color: #ffe9c5;
+            font-size: 0.78rem;
+            font-weight: 800;
+            margin-top: 5px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 260px;
+        }
+
+        .signout {
+            border: 3px solid var(--black);
+            background: var(--paper);
+            color: var(--black);
+            border-radius: 0;
+            padding: 10px 16px;
+            font-weight: 900;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: 5px 5px 0 var(--black);
+        }
+
+        .signout:hover {
+            background: var(--black);
+            color: var(--paper);
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            border-bottom: 4px solid var(--black);
+        }
+
+        .stat {
+            min-height: 128px;
+            padding: 22px 18px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            text-align: center;
+            border-right: 4px solid var(--black);
+            background: var(--paper);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat:last-child {
+            border-right: 0;
+        }
+
+        .stat:nth-child(2) {
+            background: var(--paper-deep);
+        }
+
+        .stat:nth-child(3)::before,
+        .stat:nth-child(4)::before {
+            content: '';
+            position: absolute;
+            left: -22px;
+            top: 10px;
+            width: 86px;
+            height: 18px;
+            background: var(--red);
+            transform: rotate(-24deg);
+        }
+
+        .stat:nth-child(4)::before {
+            background: var(--black);
+        }
+
+        .label {
+            color: var(--muted);
+            font-size: 0.78rem;
+            font-weight: 900;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            position: relative;
+            z-index: 1;
+        }
+
+        .value {
+            font-family: var(--mono);
+            font-size: clamp(1.55rem, 4vw, 2.25rem);
+            font-weight: 700;
+            letter-spacing: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .value.active {
+            color: var(--blue);
+        }
+
+        .value.expired {
+            color: var(--red);
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            min-height: 160px;
+            border-bottom: 4px solid var(--black);
+            background: var(--black);
+            color: var(--paper);
+        }
+
+        .summary {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 28px 18px;
+            border-right: 4px solid var(--paper);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .summary:last-child {
+            border-right: 0;
+        }
+
+        .summary .value {
+            margin-top: 12px;
+            color: #ffffff;
+            font-size: clamp(1.7rem, 5vw, 2.6rem);
+        }
+
+        .summary .label {
+            color: #f0d9ad;
+        }
+
+        .summary:first-child::after {
+            content: '';
+            position: absolute;
+            right: 18px;
+            bottom: 18px;
+            width: 94px;
+            height: 28px;
+            background: var(--red);
+            transform: skewX(-28deg);
+        }
+
+        .summary:last-child::after {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 20px;
+            width: 72px;
+            height: 72px;
+            border: 10px solid var(--red);
+            transform: rotate(22deg);
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            min-height: 280px;
+        }
+
+        .panel {
+            padding: 26px;
+            border-right: 4px solid var(--black);
+            background: var(--paper);
+        }
+
+        .panel:last-child {
+            border-right: 0;
+        }
+
+        .panel-title {
+            display: inline-block;
+            background: var(--black);
+            color: var(--paper);
+            font-family: var(--display);
+            font-size: clamp(0.9rem, 3vw, 1.15rem);
+            font-weight: 900;
+            letter-spacing: 0;
+            line-height: 1;
+            margin-bottom: 22px;
+            padding: 10px 12px;
+            text-transform: uppercase;
+            transform: rotate(-1deg);
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 16px;
+            align-items: center;
+            min-height: 44px;
+            border-bottom: 3px solid var(--black);
+            font-family: var(--mono);
+            font-size: 0.94rem;
+            text-transform: uppercase;
+        }
+
+        .row:last-child {
+            border-bottom: 0;
+        }
+
+        .code {
+            color: var(--blue);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .row-value {
+            color: var(--text);
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .empty {
+            color: var(--muted);
+            padding: 24px 0;
+            font-size: 0.92rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        @media (max-width: 720px) {
+            body {
+                padding: 18px 10px;
+            }
+
+            .dashboard {
+                box-shadow: 7px 7px 0 var(--black);
+                transform: none;
+            }
+
+            .topbar {
+                padding: 14px;
+                gap: 12px;
+            }
+
+            .brand-title {
+                font-size: 0.98rem;
+            }
+
+            .admin-meta {
+                max-width: 150px;
+            }
+
+            .stat-grid,
+            .summary-grid,
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stat,
+            .summary,
+            .panel {
+                border-right: 0;
+                border-bottom: 4px solid var(--black);
+            }
+
+            .panel:last-child {
+                border-bottom: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="dashboard">
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-mark">S</div>
+                <div>
+                    <div class="brand-title">ShortURL Admin</div>
+                    <div class="admin-meta" id="usernameDisplay">Admin</div>
+                </div>
+            </div>
+            <button class="signout" onclick="logout()">Sign Out</button>
+        </header>
+
+        <section class="stat-grid" aria-label="URL totals">
+            <div class="stat">
+                <div class="label">Total URLs</div>
+                <div class="value" id="statTotalShortened">--</div>
+            </div>
+            <div class="stat">
+                <div class="label">Redirects</div>
+                <div class="value" id="statTotalRedirects">--</div>
+            </div>
+            <div class="stat">
+                <div class="label">Active</div>
+                <div class="value active" id="statActiveLinks">--</div>
+            </div>
+            <div class="stat">
+                <div class="label">Expired</div>
+                <div class="value expired" id="statExpiredLinks">--</div>
+            </div>
+        </section>
+
+        <section class="summary-grid" aria-label="System summary">
+            <div class="summary">
+                <div>
+                    <div class="label">Cache Hit Rate</div>
+                    <div class="value" id="statCacheHitRate">--</div>
+                </div>
+            </div>
+            <div class="summary">
+                <div>
+                    <div class="label">Avg Redirect Latency</div>
+                    <div class="value" id="statAvgLatency">--</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="detail-grid">
+            <div class="panel">
+                <h2 class="panel-title">Top Performing Links</h2>
+                <div id="topLinksBody">
+                    <div class="empty">Loading analytics...</div>
+                </div>
+            </div>
+            <div class="panel">
+                <h2 class="panel-title">System Performance</h2>
+                <div id="systemPerformanceBody">
+                    <div class="empty">Loading performance...</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const numberFormat = new Intl.NumberFormat();
+
+        function formatNumber(value) {
+            return numberFormat.format(Number(value || 0));
+        }
+
+        function normalizeLatency(value) {
+            if (!value) return '0 ms';
+            return value.toString().replace('ms', ' ms');
+        }
+
+        async function verifyAdminAuth() {
+            try {
+                const res = await fetch('/api/v1/auth/me');
+                if (!res.ok) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const data = await res.json();
+                if (data.user.role !== 'ADMIN') {
+                    alert('403 Forbidden. Admin privileges required.');
+                    window.location.href = '/dashboard';
+                    return;
+                }
+
+                document.getElementById('usernameDisplay').innerText = data.user.username;
+                fetchAdminStats();
+            } catch (e) {
+                window.location.href = '/login';
+            }
+        }
+
+        async function fetchAdminStats() {
+            try {
+                const res = await fetch('/api/v1/admin/stats');
+                if (!res.ok) {
+                    if (res.status === 403) {
+                        alert('Forbidden access to admin telemetry.');
+                        window.location.href = '/dashboard';
+                    }
+                    return;
+                }
+
+                const data = await res.json();
+                const stats = data.system_stats;
+
+                document.getElementById('statTotalShortened').innerText = formatNumber(stats.totalShortened);
+                document.getElementById('statTotalRedirects').innerText = formatNumber(stats.totalRedirects);
+                document.getElementById('statActiveLinks').innerText = formatNumber(stats.activeLinksCount);
+                document.getElementById('statExpiredLinks').innerText = formatNumber(stats.expiredLinksCount);
+                document.getElementById('statCacheHitRate').innerText = stats.cacheHitRate;
+                document.getElementById('statAvgLatency').innerText = normalizeLatency(stats.avgRedirectLatencyMs);
+
+                renderTopLinks(data.top_links || []);
+                renderSystemPerformance(stats);
+            } catch (e) {
+                console.error('Failed to fetch admin telemetry', e);
+            }
+        }
+
+        function renderTopLinks(links) {
+            const topBody = document.getElementById('topLinksBody');
+            topBody.innerHTML = '';
+
+            if (!links.length) {
+                topBody.innerHTML = '<div class="empty">No click data recorded yet.</div>';
+                return;
+            }
+
+            links.forEach((item) => {
+                const row = document.createElement('div');
+                row.className = 'row';
+                row.innerHTML = `
+                    <span class="code">/${item.shortCode}</span>
+                    <span class="row-value">${formatNumber(item.clickCount)}</span>
+                `;
+                topBody.appendChild(row);
+            });
+        }
+
+        function renderSystemPerformance(stats) {
+            const performanceBody = document.getElementById('systemPerformanceBody');
+            const rows = [
+                ['Cache Hits', formatNumber(stats.cacheHits)],
+                ['Cache Misses', formatNumber(stats.cacheMisses)],
+                ['P95 Latency', normalizeLatency(stats.avgRedirectLatencyMs)]
+            ];
+
+            performanceBody.innerHTML = '';
+            rows.forEach(([label, value]) => {
+                const row = document.createElement('div');
+                row.className = 'row';
+                row.innerHTML = `
+                    <span>${label}</span>
+                    <span class="row-value">${value}</span>
+                `;
+                performanceBody.appendChild(row);
+            });
+        }
+
+        async function logout() {
+            await fetch('/api/v1/auth/logout', { method: 'POST' });
+            window.location.href = '/login';
+        }
+
+        verifyAdminAuth();
+        setInterval(fetchAdminStats, 5000);
+    </script>
+</body>
+</html>

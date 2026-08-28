@@ -3,795 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShortURL | High Performance System Design & URL Shortener</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔗</text></svg>">
+    <title>ShortURL | Routing</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@800;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-primary: #0b0f19;
-            --bg-card: rgba(17, 24, 39, 0.7);
-            --bg-card-border: rgba(255, 255, 255, 0.08);
-            --accent-glow: #6366f1;
-            --accent-teal: #14b8a6;
-            --accent-pink: #ec4899;
-            --text-main: #f3f4f6;
-            --text-muted: #9ca3af;
-            --font-mono: 'JetBrains Mono', monospace;
+            --bg: #e9dfc7;
+            --paper: #f7efd8;
+            --black: #111111;
+            --red: #d71920;
+            --blue: #154c8b;
+            --display: 'Archivo Black', 'Inter', sans-serif;
+            --mono: 'JetBrains Mono', monospace;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            background-color: var(--bg-primary);
-            color: var(--text-main);
-            font-family: 'Inter', sans-serif;
             min-height: 100vh;
-            background-image: 
-                radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
-                radial-gradient(circle at 85% 85%, rgba(20, 184, 166, 0.12) 0%, transparent 40%);
-            padding: 2rem 1rem;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            background:
+                radial-gradient(circle at 78% 22%, rgba(17, 17, 17, 0.13) 0 2px, transparent 2px 13px),
+                linear-gradient(132deg, transparent 0 45%, rgba(21, 76, 139, 0.72) 45% 49%, transparent 49%),
+                linear-gradient(132deg, transparent 0 53%, rgba(215, 25, 32, 0.92) 53% 60%, transparent 60%),
+                linear-gradient(22deg, transparent 0 68%, rgba(17, 17, 17, 0.94) 68% 73%, transparent 73%),
+                linear-gradient(104deg, transparent 0 9%, rgba(215, 25, 32, 0.88) 9% 13%, transparent 13%),
+                repeating-linear-gradient(90deg, rgba(17, 17, 17, 0.05) 0 1px, transparent 1px 38px),
+                var(--bg);
+            color: var(--black);
+            font-family: 'Inter', sans-serif;
+            position: relative;
+            overflow-x: hidden;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        body::before,
+        body::after {
+            content: '';
+            position: fixed;
+            pointer-events: none;
+            z-index: 0;
         }
 
-        header {
-            text-align: center;
-            margin-bottom: 3rem;
+        body::before {
+            left: -84px;
+            bottom: -74px;
+            width: 310px;
+            height: 310px;
+            border: 34px solid var(--black);
+            transform: rotate(18deg);
+        }
+
+        body::after {
+            right: 5vw;
+            top: 8vh;
+            width: 190px;
+            height: 52px;
+            background: var(--blue);
+            border: 4px solid var(--black);
+            transform: rotate(-18deg);
+        }
+
+        .poster {
+            width: min(560px, 100%);
+            background: var(--paper);
+            border: 4px solid var(--black);
+            box-shadow: 12px 12px 0 var(--black);
+            padding: 34px;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .poster::before {
+            content: '';
+            position: absolute;
+            right: -44px;
+            top: 30px;
+            width: 190px;
+            height: 38px;
+            background: var(--red);
+            transform: rotate(-22deg);
         }
 
         .badge {
             display: inline-block;
-            padding: 0.25rem 0.75rem;
-            background: rgba(99, 102, 241, 0.2);
-            border: 1px solid rgba(99, 102, 241, 0.4);
-            border-radius: 9999px;
-            color: #818cf8;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
+            background: var(--black);
+            color: var(--paper);
+            font-family: var(--mono);
+            font-size: 0.78rem;
+            padding: 8px 10px;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            position: relative;
+            z-index: 1;
         }
 
         h1 {
-            font-size: 2.75rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 0.75rem;
-        }
-
-        p.subtitle {
-            color: var(--text-muted);
-            font-size: 1.1rem;
-            max-width: 650px;
-            margin: 0 auto;
-        }
-
-        /* Metrics Bar */
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 1.25rem;
-            margin-bottom: 2.5rem;
-        }
-
-        .metric-card {
-            background: var(--bg-card);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--bg-card-border);
-            border-radius: 16px;
-            padding: 1.25rem 1.5rem;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .metric-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background: linear-gradient(90deg, var(--accent-glow), var(--accent-teal));
-        }
-
-        .metric-label {
-            font-size: 0.85rem;
-            color: var(--text-muted);
+            font-family: var(--display);
+            font-size: clamp(2.2rem, 10vw, 4rem);
+            line-height: 0.92;
+            letter-spacing: 0;
+            margin: 18px 0 12px;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
         }
 
-        .metric-value {
-            font-size: 1.75rem;
-            font-weight: 700;
-            font-family: var(--font-mono);
-            color: #ffffff;
-        }
-
-        /* Initial Startup Fetching Banner (Floating Top-Right Corner) */
-        .fetching-banner {
-            position: fixed;
-            top: 24px;
-            right: 24px;
-            background: rgba(15, 23, 42, 0.92);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(99, 102, 241, 0.4);
-            border-radius: 16px;
-            padding: 0.85rem 1.25rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
-            z-index: 9999;
-            animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            max-width: 380px;
-        }
-
-        @keyframes slideInRight {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-
-        .fetching-node {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .node-pulse {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #818cf8;
-            box-shadow: 0 0 12px #818cf8;
-            animation: pulseGlow 1.2s infinite alternate;
-        }
-
-        @keyframes pulseGlow {
-            from { transform: scale(0.8); opacity: 0.6; }
-            to { transform: scale(1.3); opacity: 1; box-shadow: 0 0 20px #818cf8; }
-        }
-
-        .data-stream {
-            display: flex;
-            gap: 6px;
-        }
-
-        .data-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #2dd4bf;
-            animation: moveDot 1.4s infinite ease-in-out;
-        }
-
-        .data-dot:nth-child(1) { animation-delay: 0s; }
-        .data-dot:nth-child(2) { animation-delay: 0.2s; }
-        .data-dot:nth-child(3) { animation-delay: 0.4s; }
-
-        @keyframes moveDot {
-            0%, 100% { transform: translateY(0); opacity: 0.3; }
-            50% { transform: translateY(-6px); opacity: 1; }
-        }
-
-        /* Main Content Layout */
-        .grid-layout {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-        }
-
-        @media (max-width: 900px) {
-            .grid-layout {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .card {
-            background: var(--bg-card);
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--bg-card-border);
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-        }
-
-        .card-title {
-            font-size: 1.35rem;
-            font-weight: 600;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .form-group {
-            margin-bottom: 1.25rem;
-        }
-
-        label {
-            display: block;
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: var(--text-muted);
-            margin-bottom: 0.5rem;
-        }
-
-        input[type="text"], input[type="number"] {
-            width: 100%;
-            padding: 0.85rem 1rem;
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 12px;
-            color: #ffffff;
-            font-size: 0.95rem;
-            outline: none;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        input[type="text"]:focus {
-            border-color: var(--accent-glow);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
-        }
-
-        .btn-submit {
-            width: 100%;
-            padding: 0.9rem;
-            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-            border: none;
-            border-radius: 12px;
-            color: #ffffff;
-            font-weight: 600;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: transform 0.1s ease, box-shadow 0.2s ease;
-        }
-
-        .btn-submit:hover {
-            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
-            transform: translateY(-1px);
-        }
-
-        /* Generated URL Result Box */
-        .result-box {
-            margin-top: 1.5rem;
-            padding: 1.25rem;
-            background: rgba(20, 184, 166, 0.1);
-            border: 1px solid rgba(20, 184, 166, 0.3);
-            border-radius: 14px;
-            display: none;
-        }
-
-        .result-url {
-            font-family: var(--font-mono);
-            font-size: 1.1rem;
-            color: #2dd4bf;
-            word-break: break-all;
-            margin-bottom: 0.75rem;
-        }
-
-        .btn-copy {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: #fff;
-            padding: 0.4rem 0.8rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.85rem;
-        }
-
-        /* Building URL Loading Animation */
-        .building-box {
-            margin-top: 1.5rem;
-            padding: 1.25rem;
-            background: rgba(99, 102, 241, 0.08);
-            border: 1px dashed rgba(99, 102, 241, 0.4);
-            border-radius: 14px;
-            display: none;
-            text-align: center;
-        }
-
-        .spinner-glow {
-            display: inline-block;
-            width: 24px;
-            height: 24px;
-            border: 3px solid rgba(99, 102, 241, 0.2);
-            border-radius: 50%;
-            border-top-color: #818cf8;
-            animation: spin 0.8s ease-in-out infinite;
-            margin-bottom: 0.5rem;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .typewriter-text {
-            font-family: var(--font-mono);
-            font-size: 1.1rem;
-            color: #a5b4fc;
-            font-weight: 600;
-            display: inline-block;
-        }
-
-        .cursor-blink {
-            display: inline-block;
-            width: 8px;
-            height: 1.1rem;
-            background-color: #818cf8;
-            vertical-align: middle;
-            margin-left: 2px;
-            animation: blink 0.7s infinite;
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-        }
-
-        /* Redirect Tester & Analytics List */
-        .link-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-
-        .link-item {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: 12px;
-            padding: 1rem 1.25rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .link-info {
-            max-width: 70%;
-        }
-
-        .short-tag {
-            font-family: var(--font-mono);
-            font-weight: 600;
-            color: #818cf8;
-            font-size: 1rem;
-            text-decoration: none;
-        }
-
-        .short-tag:hover {
-            text-decoration: underline;
-        }
-
-        .long-url-truncate {
-            font-size: 0.82rem;
-            color: var(--text-muted);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-top: 0.25rem;
-        }
-
-        .click-badge {
-            font-family: var(--font-mono);
-            background: rgba(99, 102, 241, 0.15);
-            color: #a5b4fc;
-            padding: 0.3rem 0.6rem;
-            border-radius: 8px;
-            font-size: 0.85rem;
+        p {
+            color: #4a4035;
+            font-weight: 900;
+            text-transform: uppercase;
+            position: relative;
+            z-index: 1;
         }
     </style>
+    <script>
+        async function routeUser() {
+            try {
+                const res = await fetch('/api/v1/auth/me');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.user && data.user.role === 'ADMIN') {
+                        window.location.href = '/admin';
+                    } else {
+                        window.location.href = '/dashboard';
+                    }
+                } else {
+                    window.location.href = '/login';
+                }
+            } catch(e) {
+                window.location.href = '/login';
+            }
+        }
+        routeUser();
+    </script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <span class="badge">System Design Architecture Demo</span>
-            <h1>High-Scale URL Shortener</h1>
-            <p class="subtitle">Distributed architecture capable of millions of writes, billions of redirects, sub-100ms latency with Base62 tokenization & LRU memory caching.</p>
-        </header>
-
-        <!-- Startup Data Fetching Visualizer Banner -->
-        <div id="fetchingBanner" class="fetching-banner">
-            <div class="fetching-node">
-                <div class="node-pulse"></div>
-                <div>
-                    <div id="fetchingStatusTitle" style="font-weight: 600; font-size: 0.95rem; color: #ffffff;">Initializing System Storage & Cache...</div>
-                    <div id="fetchingStatusDesc" style="font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono); margin-top: 0.15rem;">Connecting to LRU Memory Cache & MongoDB cluster</div>
-                </div>
-            </div>
-            <div class="data-stream">
-                <div class="data-dot"></div>
-                <div class="data-dot"></div>
-                <div class="data-dot"></div>
-            </div>
-        </div>
-
-        <!-- Live System Performance Metrics -->
-        <div class="metrics-grid">
-            <div class="metric-card">
-                <div class="metric-label">Target Read Latency</div>
-                <div class="metric-value" style="color: #2dd4bf;">&lt; 5 ms</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-label">Cache Hit Ratio</div>
-                <div class="metric-value" id="cacheHitRate">94.2%</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-label">Total Shortened</div>
-                <div class="metric-value" id="totalShortened">--</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-label">Total Redirect Hits</div>
-                <div class="metric-value" id="totalRedirects">--</div>
-            </div>
-        </div>
-
-        <div class="grid-layout">
-            <!-- URL Shortener Form -->
-            <div class="card">
-                <div class="card-title">
-                    <span>⚡ Create Shortened URL</span>
-                </div>
-                <form id="shortenForm">
-                    <div class="form-group">
-                        <label for="longUrl">Original Long URL</label>
-                        <input type="text" id="longUrl" placeholder="https://example.com/very/long/path/with?query=params" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="customAlias">Custom Alias (Optional)</label>
-                        <input type="text" id="customAlias" placeholder="e.g. launch2026">
-                    </div>
-                    <div class="form-group">
-                        <label for="ttlSeconds">Link Expiration TTL in Seconds (Optional)</label>
-                        <input type="number" id="ttlSeconds" placeholder="e.g. 3600 for 1 hour">
-                    </div>
-                    <button type="submit" id="submitBtn" class="btn-submit">Generate Short Link</button>
-                </form>
-
-                <!-- Building URL Loading Animation Box -->
-                <div id="buildingBox" class="building-box">
-                    <div class="spinner-glow"></div>
-                    <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.3rem;">Building Base62 Short URL...</div>
-                    <div>
-                        <span id="buildingUrlText" class="typewriter-text"></span><span class="cursor-blink"></span>
-                    </div>
-                </div>
-
-                <div id="resultBox" class="result-box">
-                    <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.4rem;">Shortened URL Created:</div>
-                    <div class="result-url" id="resultUrl">https://short.ly/abc123</div>
-                    <button class="btn-copy" onclick="copyResult()">Copy to Clipboard</button>
-                </div>
-            </div>
-
-            <!-- Active Short Links & Live Analytics -->
-            <div class="card">
-                <div class="card-title">
-                    <span>🟢 Active Links & Analytics</span>
-                </div>
-                <p style="color:var(--text-muted); font-size:0.88rem; margin-bottom:1rem;">
-                    Clicking an active short code executes a <strong>302 Redirect</strong>.
-                </p>
-                <div class="link-list" id="activeLinkList">
-                    <div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 1rem;">No active links created yet.</div>
-                </div>
-                <!-- Active Links Pagination Controls -->
-                <div id="paginationControls" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.06);">
-                    <button id="prevBtn" class="btn-copy" onclick="changePage(-1)" disabled>← Previous</button>
-                    <span id="pageIndicator" style="font-size: 0.85rem; color: var(--text-muted); font-family: var(--font-mono);">Page 1 of 1</span>
-                    <button id="nextBtn" class="btn-copy" onclick="changePage(1)" disabled>Next →</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Floating Corner Widget for Expired Links -->
-    <div id="floatingExpiredBar" onclick="toggleExpiredModal()" style="position: fixed; bottom: 24px; right: 24px; background: rgba(244, 63, 94, 0.15); backdrop-filter: blur(12px); border: 1px solid rgba(244, 63, 94, 0.4); border-radius: 9999px; padding: 0.75rem 1.25rem; color: #fda4af; font-size: 0.9rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; box-shadow: 0 10px 25px rgba(244, 63, 94, 0.25); z-index: 999; transition: transform 0.2s ease;">
-        <span>⏳ Expired Links</span>
-        <span id="floatingExpiredBadge" style="background: #f43f5e; color: #fff; border-radius: 9999px; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-family: var(--font-mono);">0</span>
-    </div>
-
-    <!-- Expired Links Modal Drawer -->
-    <div id="expiredModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 1000; justify-content: center; align-items: center;">
-        <div style="background: #0f172a; border: 1px solid rgba(244, 63, 94, 0.3); border-radius: 20px; width: 90%; max-width: 550px; padding: 2rem; box-shadow: 0 25px 50px rgba(0,0,0,0.8); position: relative;">
-            <button onclick="toggleExpiredModal()" style="position: absolute; top: 1rem; right: 1.2rem; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
-            <div style="font-size: 1.35rem; font-weight: 600; color: #f43f5e; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span>⏳ Expired / Inactive Links</span>
-            </div>
-            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
-                Short links whose TTL has passed. Returns HTTP <strong>410 Gone</strong> response.
-            </p>
-
-            <div class="link-list" id="expiredLinkList">
-                <div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 1rem;">No expired links.</div>
-            </div>
-
-            <!-- Expired Links Pagination Controls (3 links per page) -->
-            <div id="expiredPaginationControls" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.25rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.06);">
-                <button id="expiredPrevBtn" class="btn-copy" onclick="changeExpiredPage(-1)" disabled>← Previous</button>
-                <span id="expiredPageIndicator" style="font-size: 0.85rem; color: #f43f5e; font-family: var(--font-mono);">Page 1 of 1</span>
-                <button id="expiredNextBtn" class="btn-copy" onclick="changeExpiredPage(1)" disabled>Next →</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        async function fetchSystemStats() {
-            try {
-                const res = await fetch('/api/v1/system/stats');
-                const data = await res.json();
-                document.getElementById('cacheHitRate').innerText = data.cache_hit_rate;
-                document.getElementById('totalShortened').innerText = data.system_stats.totalShortened.toLocaleString();
-                document.getElementById('totalRedirects').innerText = data.system_stats.totalRedirects.toLocaleString();
-            } catch (err) {
-                console.error("Failed to fetch stats", err);
-            }
-        }
-
-        let currentPage = 1;
-        const pageSize = 3;
-        let activeLinksData = [];
-
-        let currentExpiredPage = 1;
-        const expiredPageSize = 3;
-        let expiredLinksData = [];
-
-        function toggleExpiredModal() {
-            const modal = document.getElementById('expiredModal');
-            if (modal.style.display === 'none' || modal.style.display === '') {
-                modal.style.display = 'flex';
-                renderExpiredPage();
-            } else {
-                modal.style.display = 'none';
-            }
-        }
-
-        async function loadActiveLinks() {
-            try {
-                const res = await fetch('/api/v1/links');
-                if (res.ok) {
-                    const links = await res.json();
-                    const now = new Date();
-                    activeLinksData = [];
-                    expiredLinksData = [];
-
-                    links.forEach(item => {
-                        const isExpired = item.expires_at && new Date(item.expires_at) < now;
-                        if (isExpired) {
-                            expiredLinksData.push(item);
-                        } else {
-                            activeLinksData.push(item);
-                        }
-                    });
-
-                    renderActivePage();
-                    renderExpiredPage();
-                    document.getElementById('floatingExpiredBadge').innerText = expiredLinksData.length;
-                }
-            } catch (err) {
-                console.error("Failed to load links", err);
-            }
-        }
-
-        function renderActivePage() {
-            const activeListEl = document.getElementById('activeLinkList');
-            activeListEl.innerHTML = '';
-
-            const totalActive = activeLinksData.length;
-            const totalPages = Math.ceil(totalActive / pageSize) || 1;
-
-            if (currentPage > totalPages) currentPage = totalPages;
-            if (currentPage < 1) currentPage = 1;
-
-            if (totalActive === 0) {
-                activeListEl.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 1rem;">No active links created yet.</div>';
-                document.getElementById('pageIndicator').innerText = `Page 1 of 1`;
-                document.getElementById('prevBtn').disabled = true;
-                document.getElementById('nextBtn').disabled = true;
-                return;
-            }
-
-            const startIndex = (currentPage - 1) * pageSize;
-            const pageItems = activeLinksData.slice(startIndex, startIndex + pageSize);
-
-            pageItems.forEach(item => appendActiveLinkItem(item, activeListEl));
-
-            document.getElementById('pageIndicator').innerText = `Page ${currentPage} of ${totalPages} (${totalActive} total)`;
-            document.getElementById('prevBtn').disabled = currentPage === 1;
-            document.getElementById('nextBtn').disabled = currentPage === totalPages;
-        }
-
-        function changePage(direction) {
-            currentPage += direction;
-            renderActivePage();
-        }
-
-        function renderExpiredPage() {
-            const expiredListEl = document.getElementById('expiredLinkList');
-            expiredListEl.innerHTML = '';
-
-            const totalExpired = expiredLinksData.length;
-            const totalPages = Math.ceil(totalExpired / expiredPageSize) || 1;
-
-            if (currentExpiredPage > totalPages) currentExpiredPage = totalPages;
-            if (currentExpiredPage < 1) currentExpiredPage = 1;
-
-            if (totalExpired === 0) {
-                expiredListEl.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 1rem;">No expired links.</div>';
-                document.getElementById('expiredPageIndicator').innerText = `Page 1 of 1`;
-                document.getElementById('expiredPrevBtn').disabled = true;
-                document.getElementById('expiredNextBtn').disabled = true;
-                return;
-            }
-
-            const startIndex = (currentExpiredPage - 1) * expiredPageSize;
-            const pageItems = expiredLinksData.slice(startIndex, startIndex + expiredPageSize);
-
-            pageItems.forEach(item => appendExpiredLinkItem(item, expiredListEl));
-
-            document.getElementById('expiredPageIndicator').innerText = `Page ${currentExpiredPage} of ${totalPages} (${totalExpired} total)`;
-            document.getElementById('expiredPrevBtn').disabled = currentExpiredPage === 1;
-            document.getElementById('expiredNextBtn').disabled = currentExpiredPage === totalPages;
-        }
-
-        function changeExpiredPage(direction) {
-            currentExpiredPage += direction;
-            renderExpiredPage();
-        }
-
-        function appendActiveLinkItem(item, container) {
-            const div = document.createElement('div');
-            div.className = 'link-item';
-            div.innerHTML = `
-                <div class="link-info">
-                    <a href="/${item.short_code}" target="_blank" class="short-tag">/${item.short_code}</a>
-                    <div class="long-url-truncate">${item.original_url}</div>
-                    ${item.expires_at ? `<div style="font-size:0.75rem; color:#14b8a6; margin-top:0.2rem;">Expires: ${new Date(item.expires_at).toLocaleTimeString()}</div>` : ''}
-                </div>
-                <div class="click-badge">${item.click_count} Clicks</div>
-            `;
-            container.appendChild(div);
-        }
-
-        function appendExpiredLinkItem(item, container) {
-            const div = document.createElement('div');
-            div.className = 'link-item';
-            div.style.borderColor = 'rgba(244, 63, 94, 0.2)';
-            div.style.background = 'rgba(244, 63, 94, 0.05)';
-            div.innerHTML = `
-                <div class="link-info">
-                    <a href="/${item.short_code}" target="_blank" class="short-tag" style="color: #f43f5e; text-decoration: line-through;">/${item.short_code}</a>
-                    <div class="long-url-truncate">${item.original_url}</div>
-                    <div style="font-size:0.75rem; color:#f43f5e; margin-top:0.2rem;">Expired at ${new Date(item.expires_at).toLocaleTimeString()}</div>
-                </div>
-                <div class="click-badge" style="background: rgba(244, 63, 94, 0.15); color: #fda4af;">${item.click_count} Clicks</div>
-            `;
-            container.appendChild(div);
-        }
-
-        document.getElementById('shortenForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const longUrl = document.getElementById('longUrl').value;
-            const customAlias = document.getElementById('customAlias').value;
-            const ttlSeconds = document.getElementById('ttlSeconds').value;
-
-            const submitBtn = document.getElementById('submitBtn');
-            const resultBox = document.getElementById('resultBox');
-            const buildingBox = document.getElementById('buildingBox');
-            const buildingUrlText = document.getElementById('buildingUrlText');
-
-            resultBox.style.display = 'none';
-            buildingBox.style.display = 'block';
-            submitBtn.disabled = true;
-            submitBtn.style.opacity = '0.6';
-
-            try {
-                const res = await fetch('/api/v1/shorten', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        url: longUrl,
-                        custom_alias: customAlias || undefined,
-                        ttl_seconds: ttlSeconds || undefined
-                    })
-                });
-
-                const data = await res.json();
-                if (!res.ok) {
-                    buildingBox.style.display = 'none';
-                    submitBtn.disabled = false;
-                    submitBtn.style.opacity = '1';
-                    alert(data.error || "Error shortening URL");
-                    return;
-                }
-
-                // Typewriter Animation Effect
-                const targetText = data.short_url;
-                buildingUrlText.innerText = '';
-                let index = 0;
-
-                const typeInterval = setInterval(() => {
-                    if (index < targetText.length) {
-                        buildingUrlText.innerText += targetText.charAt(index);
-                        index++;
-                    } else {
-                        clearInterval(typeInterval);
-                        setTimeout(() => {
-                            buildingBox.style.display = 'none';
-                            document.getElementById('resultUrl').innerText = data.short_url;
-                            resultBox.style.display = 'block';
-                            submitBtn.disabled = false;
-                            submitBtn.style.opacity = '1';
-                            loadActiveLinks();
-                            fetchSystemStats();
-                        }, 500);
-                    }
-                }, 40);
-
-            } catch (err) {
-                buildingBox.style.display = 'none';
-                submitBtn.disabled = false;
-                submitBtn.style.opacity = '1';
-                alert("Failed to connect to backend service.");
-            }
-        });
-
-        function copyResult() {
-            const urlText = document.getElementById('resultUrl').innerText;
-            navigator.clipboard.writeText(urlText);
-            alert("Short URL copied to clipboard!");
-        }
-
-        // Animated Startup Data Fetching Visualizer Sequence
-        async function runInitialDataSync() {
-            const banner = document.getElementById('fetchingBanner');
-            const title = document.getElementById('fetchingStatusTitle');
-            const desc = document.getElementById('fetchingStatusDesc');
-
-            banner.style.display = 'flex';
-            
-            // Step 1: Checking LRU Cache
-            title.innerText = '⚡ Phase 1: Warming up LRU Memory Cache...';
-            desc.innerText = 'Checking in-memory hot key buffers';
-            await new Promise(r => setTimeout(r, 600));
-
-            // Step 2: Querying MongoDB Source of Truth
-            title.innerText = '🗄️ Phase 2: Fetching Records from MongoDB...';
-            desc.innerText = 'Synchronizing active & expired short code indexes';
-            await new Promise(r => setTimeout(r, 800));
-
-            // Load actual stats and links
-            await fetchSystemStats();
-            await loadActiveLinks();
-
-            // Step 3: Sync Complete
-            title.innerHTML = '✅ Synchronization Complete';
-            desc.innerText = 'Serving sub-100ms low latency redirects from LRU & MongoDB';
-            
-            setTimeout(() => {
-                banner.style.transform = 'translateX(120%)';
-                banner.style.opacity = '0';
-                banner.style.transition = 'transform 0.5s ease, opacity 0.5s ease';
-                setTimeout(() => { banner.style.display = 'none'; }, 500);
-            }, 1200);
-        }
-
-        // Initialize dashboard with startup animation
-        runInitialDataSync();
-        setInterval(fetchSystemStats, 5000);
-    </script>
+    <main class="poster">
+        <span class="badge">Session Check</span>
+        <h1>ShortURL Routing</h1>
+        <p>Checking authentication state</p>
+    </main>
 </body>
 </html>

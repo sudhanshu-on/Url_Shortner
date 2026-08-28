@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShortURL | User Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@500;700;800;900&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #e9dfc7;
+            --paper: #f7efd8;
+            --paper-deep: #e1d0a8;
+            --black: #111111;
+            --red: #d71920;
+            --blue: #154c8b;
+            --text-main: #111111;
+            --text-muted: #4a4035;
+            --font-mono: 'JetBrains Mono', monospace;
+            --display: 'Archivo Black', 'Inter', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background:
+                radial-gradient(circle at 82% 14%, rgba(17, 17, 17, 0.13) 0 2px, transparent 2px 14px),
+                radial-gradient(circle at 12% 78%, rgba(17, 17, 17, 0.1) 0 2px, transparent 2px 16px),
+                linear-gradient(132deg, transparent 0 44%, rgba(21, 76, 139, 0.7) 44% 48%, transparent 48%),
+                linear-gradient(132deg, transparent 0 55%, rgba(215, 25, 32, 0.9) 55% 60%, transparent 60%),
+                linear-gradient(18deg, transparent 0 72%, rgba(17, 17, 17, 0.95) 72% 76%, transparent 76%),
+                linear-gradient(104deg, transparent 0 8%, rgba(215, 25, 32, 0.86) 8% 12%, transparent 12%),
+                repeating-linear-gradient(90deg, rgba(17, 17, 17, 0.05) 0 1px, transparent 1px 42px),
+                var(--bg);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            padding: 34px 16px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before,
+        body::after {
+            content: '';
+            position: fixed;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::before {
+            left: -92px;
+            bottom: -82px;
+            width: 340px;
+            height: 340px;
+            border: 36px solid var(--black);
+            transform: rotate(18deg);
+        }
+
+        body::after {
+            right: -34px;
+            top: 118px;
+            width: 260px;
+            height: 58px;
+            background: var(--blue);
+            border: 4px solid var(--black);
+            transform: rotate(-18deg);
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+            padding: 18px 20px;
+            background: var(--red);
+            border: 4px solid var(--black);
+            box-shadow: 9px 9px 0 var(--black);
+            color: #ffffff;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 0;
+            background: var(--black);
+            border: 3px solid #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--display);
+            font-weight: 900;
+            color: var(--paper);
+            transform: rotate(-8deg);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.55rem;
+            background: var(--paper);
+            border: 3px solid var(--black);
+            border-radius: 0;
+            color: var(--black);
+            font-size: 0.75rem;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .btn-logout {
+            background: var(--paper);
+            border: 3px solid var(--black);
+            color: var(--black);
+            padding: 0.65rem 1rem;
+            border-radius: 0;
+            cursor: pointer;
+            font-weight: 900;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            box-shadow: 5px 5px 0 var(--black);
+        }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 900px) { .grid-layout { grid-template-columns: 1fr; } }
+
+        .card {
+            background: var(--paper);
+            border: 4px solid var(--black);
+            border-radius: 0;
+            padding: 2rem;
+            box-shadow: 9px 9px 0 var(--black);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            right: -34px;
+            top: 18px;
+            width: 138px;
+            height: 28px;
+            background: var(--red);
+            transform: rotate(-22deg);
+        }
+
+        .card-title {
+            display: inline-block;
+            background: var(--black);
+            color: var(--paper);
+            font-family: var(--display);
+            font-size: clamp(1rem, 3vw, 1.25rem);
+            font-weight: 900;
+            line-height: 1;
+            margin-bottom: 1.25rem;
+            padding: 10px 12px;
+            text-transform: uppercase;
+            position: relative;
+            z-index: 1;
+            transform: rotate(-1deg);
+        }
+
+        .form-group { margin-bottom: 1.25rem; }
+
+        label {
+            display: block;
+            font-size: 0.88rem;
+            font-weight: 900;
+            color: var(--text-muted);
+            margin-bottom: 0.4rem;
+            text-transform: uppercase;
+        }
+
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 0.85rem 1rem;
+            background: #fffaf0;
+            border: 3px solid var(--black);
+            border-radius: 0;
+            color: var(--black);
+            font-size: 0.95rem;
+            font-weight: 700;
+            outline: none;
+        }
+
+        input:focus { box-shadow: 5px 5px 0 var(--blue); }
+
+        .btn-submit {
+            width: 100%;
+            padding: 0.9rem;
+            background: var(--black);
+            border: 3px solid var(--black);
+            border-radius: 0;
+            color: var(--paper);
+            font-weight: 900;
+            font-size: 1rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 6px 6px 0 var(--red);
+        }
+
+        .building-box {
+            margin-top: 1.5rem;
+            padding: 1.25rem;
+            background: var(--paper-deep);
+            border: 3px dashed var(--black);
+            border-radius: 0;
+            display: none;
+            text-align: center;
+        }
+
+        .typewriter-text { font-family: var(--font-mono); font-size: 1.1rem; color: var(--blue); word-break: break-all; }
+
+        .result-box {
+            margin-top: 1.5rem;
+            padding: 1.25rem;
+            background: var(--paper-deep);
+            border: 4px solid var(--black);
+            border-radius: 0;
+            display: none;
+        }
+
+        .result-url { font-family: var(--font-mono); font-size: 1.1rem; color: var(--blue); margin-bottom: 0.75rem; word-break: break-all; }
+
+        .btn-copy {
+            background: var(--paper);
+            border: 3px solid var(--black);
+            color: var(--black);
+            padding: 0.4rem 0.8rem;
+            border-radius: 0;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .link-list { display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem; }
+
+        .link-item {
+            background: #fffaf0;
+            border: 3px solid var(--black);
+            border-radius: 0;
+            padding: 1rem 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .short-tag { font-family: var(--font-mono); font-weight: 900; color: var(--blue); text-decoration: none; }
+        .long-url-truncate { font-size: 0.82rem; color: var(--text-muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .click-badge { font-family: var(--font-mono); background: var(--black); color: var(--paper); padding: 0.3rem 0.6rem; border-radius: 0; font-size: 0.85rem; font-weight: 900; white-space: nowrap; }
+
+        @media (max-width: 680px) {
+            body { padding: 18px 10px; }
+            header { flex-direction: column; align-items: stretch; gap: 16px; box-shadow: 6px 6px 0 var(--black); }
+            .card { padding: 1.35rem; box-shadow: 6px 6px 0 var(--black); }
+            .link-item { align-items: flex-start; flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="user-info">
+                <div class="user-avatar" id="avatarLetter">U</div>
+                <div>
+                    <div style="font-weight:700; font-size:1.1rem;" id="usernameDisplay">Loading User...</div>
+                    <span class="badge" id="roleBadge">USER</span>
+                </div>
+            </div>
+            <button class="btn-logout" onclick="logout()">Sign Out</button>
+        </header>
+
+        <div class="grid-layout">
+            <!-- Create Short URL Section -->
+            <div class="card">
+                <div class="card-title">Create Short URL</div>
+                <form id="shortenForm">
+                    <div class="form-group">
+                        <label>Original Long URL</label>
+                        <input type="text" id="longUrl" placeholder="https://example.com/very/long/link" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Custom Alias (Optional)</label>
+                        <input type="text" id="customAlias" placeholder="e.g. launch2026">
+                    </div>
+                    <div class="form-group">
+                        <label>Expiration TTL in Seconds (Optional)</label>
+                        <input type="number" id="ttlSeconds" placeholder="e.g. 3600 for 1 hour">
+                    </div>
+                    <button type="submit" id="submitBtn" class="btn-submit">Generate Short Link</button>
+                </form>
+
+                <div id="buildingBox" class="building-box">
+                    <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.3rem;">Building Base62 Short URL...</div>
+                    <span id="buildingUrlText" class="typewriter-text"></span>
+                </div>
+
+                <div id="resultBox" class="result-box">
+                    <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.4rem;">Shortened URL Created:</div>
+                    <div class="result-url" id="resultUrl">https://short.ly/abc123</div>
+                    <button class="btn-copy" onclick="copyResult()">Copy to Clipboard</button>
+                </div>
+            </div>
+
+            <!-- My Recent Links Section -->
+            <div class="card">
+                <div class="card-title">My Recent Links</div>
+                <p style="color:var(--text-muted); font-size:0.88rem; margin-bottom:1rem;">
+                    Displaying URLs created by your account.
+                </p>
+                <div class="link-list" id="activeLinkList">
+                    <div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 1rem;">No links created yet.</div>
+                </div>
+
+                <div id="paginationControls" style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; margin-top: 1rem; padding-top: 0.75rem; border-top: 3px solid var(--black);">
+                    <button id="prevBtn" class="btn-copy" onclick="changePage(-1)" disabled>Previous</button>
+                    <span id="pageIndicator" style="font-size: 0.85rem; color: var(--text-muted); font-family: var(--font-mono);">Page 1 of 1</span>
+                    <button id="nextBtn" class="btn-copy" onclick="changePage(1)" disabled>Next</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Expired Links Corner Widget -->
+    <div id="floatingExpiredBar" onclick="toggleExpiredModal()" style="position: fixed; bottom: 24px; right: 24px; background: var(--red); border: 4px solid var(--black); border-radius: 0; padding: 0.75rem 1.25rem; color: #fff; font-size: 0.9rem; font-weight: 900; text-transform: uppercase; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; box-shadow: 7px 7px 0 var(--black); z-index: 999;">
+        <span>Expired Links</span>
+        <span id="floatingExpiredBadge" style="background: var(--black); color: var(--paper); border-radius: 0; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-family: var(--font-mono);">0</span>
+    </div>
+
+    <!-- Expired Links Modal Drawer -->
+    <div id="expiredModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(17,17,17,0.72); z-index: 1000; justify-content: center; align-items: center; padding: 1rem;">
+        <div style="background: var(--paper); border: 4px solid var(--black); border-radius: 0; width: 90%; max-width: 550px; padding: 2rem; position: relative; box-shadow: 10px 10px 0 var(--black);">
+            <button onclick="toggleExpiredModal()" style="position: absolute; top: 1rem; right: 1.2rem; background: var(--black); border: 3px solid var(--black); color: var(--paper); font-size: 1.2rem; cursor: pointer; width: 34px; height: 34px; line-height: 1;">&times;</button>
+            <div style="display: inline-block; background: var(--red); color: #fff; font-family: var(--display); font-size: 1.15rem; font-weight: 900; margin-bottom: 1rem; padding: 10px 12px; text-transform: uppercase;">My Expired Links</div>
+            <div class="link-list" id="expiredLinkList">
+                <div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 1rem;">No expired links.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let currentPage = 1;
+        const pageSize = 5;
+        let activeLinksData = [];
+        let expiredLinksData = [];
+        let refreshTimer = null;
+
+        async function verifyUserAuth() {
+            try {
+                const res = await fetch('/api/v1/auth/me');
+                if (!res.ok) {
+                    window.location.href = '/login';
+                    return;
+                }
+                const data = await res.json();
+                currentUser = data.user;
+                document.getElementById('usernameDisplay').innerText = currentUser.username;
+                document.getElementById('avatarLetter').innerText = currentUser.username.charAt(0).toUpperCase();
+                document.getElementById('roleBadge').innerText = currentUser.role;
+
+                if (currentUser.role === 'ADMIN') {
+                    window.location.href = '/admin';
+                } else {
+                    loadUserLinks();
+                }
+            } catch(e) {
+                window.location.href = '/login';
+            }
+        }
+
+        async function loadUserLinks() {
+            try {
+                const res = await fetch('/api/v1/links');
+                if (res.ok) {
+                    const links = await res.json();
+                    activeLinksData = [];
+                    expiredLinksData = [];
+
+                    links.forEach(item => {
+                        const isExpired = item.is_expired;
+                        if (isExpired) {
+                            expiredLinksData.push(item);
+                        } else {
+                            activeLinksData.push(item);
+                        }
+                    });
+
+                    renderActivePage();
+                    document.getElementById('floatingExpiredBadge').innerText = expiredLinksData.length;
+                }
+            } catch(err) {
+                console.error("Failed to load user links", err);
+            }
+        }
+
+        function scheduleLinksRefresh(delayMs = 700) {
+            if (refreshTimer) {
+                clearTimeout(refreshTimer);
+            }
+
+            refreshTimer = setTimeout(() => {
+                refreshTimer = null;
+                loadUserLinks();
+            }, delayMs);
+        }
+
+        function renderActivePage() {
+            const activeListEl = document.getElementById('activeLinkList');
+            activeListEl.innerHTML = '';
+            const totalActive = activeLinksData.length;
+            const totalPages = Math.ceil(totalActive / pageSize) || 1;
+
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+
+            if (totalActive === 0) {
+                activeListEl.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 1rem;">No active links created yet.</div>';
+                document.getElementById('pageIndicator').innerText = `Page 1 of 1`;
+                document.getElementById('prevBtn').disabled = true;
+                document.getElementById('nextBtn').disabled = true;
+                return;
+            }
+
+            const startIndex = (currentPage - 1) * pageSize;
+            const pageItems = activeLinksData.slice(startIndex, startIndex + pageSize);
+
+            pageItems.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'link-item';
+                div.innerHTML = `
+                    <div class="link-info">
+                        <a href="/${item.short_code}" target="_blank" class="short-tag" onclick="scheduleLinksRefresh()">/${item.short_code}</a>
+                        <div class="long-url-truncate">${item.original_url}</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <div class="click-badge">${item.click_count} Clicks</div>
+                        <button class="btn-copy" onclick="deleteLink('${item.short_code}')" style="color:#fff; background:var(--red);">Delete</button>
+                    </div>
+                `;
+                activeListEl.appendChild(div);
+            });
+
+            document.getElementById('pageIndicator').innerText = `Page ${currentPage} of ${totalPages} (${totalActive} total)`;
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = currentPage === totalPages;
+        }
+
+        function changePage(dir) {
+            currentPage += dir;
+            renderActivePage();
+        }
+
+        async function deleteLink(shortCode) {
+            if (!confirm(`Are you sure you want to delete /${shortCode}?`)) return;
+            try {
+                const res = await fetch(`/api/v1/links/${shortCode}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadUserLinks();
+                } else {
+                    alert("Failed to delete link.");
+                }
+            } catch(e){}
+        }
+
+        function toggleExpiredModal() {
+            const modal = document.getElementById('expiredModal');
+            const expiredList = document.getElementById('expiredLinkList');
+            if (modal.style.display === 'none' || modal.style.display === '') {
+                modal.style.display = 'flex';
+                expiredList.innerHTML = '';
+                if (expiredLinksData.length === 0) {
+                    expiredList.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 1rem;">No expired links.</div>';
+                } else {
+                    expiredLinksData.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'link-item';
+                        div.innerHTML = `
+                            <div class="link-info">
+                                <span class="short-tag" style="color:var(--red); text-decoration:line-through;">/${item.short_code}</span>
+                                <div class="long-url-truncate">${item.original_url}</div>
+                            </div>
+                            <div class="click-badge" style="background:var(--red); color:#fff;">${item.click_count} Clicks</div>
+                        `;
+                        expiredList.appendChild(div);
+                    });
+                }
+            } else {
+                modal.style.display = 'none';
+            }
+        }
+
+        document.getElementById('shortenForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const longUrl = document.getElementById('longUrl').value;
+            const customAlias = document.getElementById('customAlias').value;
+            const ttlSeconds = document.getElementById('ttlSeconds').value;
+
+            const submitBtn = document.getElementById('submitBtn');
+            const resultBox = document.getElementById('resultBox');
+            const buildingBox = document.getElementById('buildingBox');
+            const buildingUrlText = document.getElementById('buildingUrlText');
+
+            resultBox.style.display = 'none';
+            buildingBox.style.display = 'block';
+            submitBtn.disabled = true;
+
+            try {
+                const res = await fetch('/api/v1/shorten', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: longUrl, custom_alias: customAlias || undefined, ttl_seconds: ttlSeconds || undefined })
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    buildingBox.style.display = 'none';
+                    submitBtn.disabled = false;
+                    alert(data.error || "Error shortening URL");
+                    return;
+                }
+
+                buildingUrlText.innerText = data.short_url;
+                setTimeout(() => {
+                    buildingBox.style.display = 'none';
+                    document.getElementById('resultUrl').innerText = data.short_url;
+                    resultBox.style.display = 'block';
+                    submitBtn.disabled = false;
+                    loadUserLinks();
+                }, 400);
+
+            } catch (err) {
+                buildingBox.style.display = 'none';
+                submitBtn.disabled = false;
+                alert("Failed to connect to shortener service.");
+            }
+        });
+
+        function copyResult() {
+            const urlText = document.getElementById('resultUrl').innerText;
+            navigator.clipboard.writeText(urlText);
+            alert("Short URL copied to clipboard!");
+        }
+
+        async function logout() {
+            await fetch('/api/v1/auth/logout', { method: 'POST' });
+            window.location.href = '/login';
+        }
+
+        verifyUserAuth();
+        setInterval(loadUserLinks, 10000);
+
+        window.addEventListener('focus', () => {
+            scheduleLinksRefresh(250);
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                scheduleLinksRefresh(250);
+            }
+        });
+    </script>
+</body>
+</html>

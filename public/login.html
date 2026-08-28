@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShortURL | Login | Register</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@500;700;800;900&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #e9dfc7;
+            --paper: #f7efd8;
+            --paper-deep: #e1d0a8;
+            --black: #111111;
+            --red: #d71920;
+            --blue: #154c8b;
+            --text: #111111;
+            --muted: #4a4035;
+            --mono: 'JetBrains Mono', monospace;
+            --display: 'Archivo Black', 'Inter', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 28px 16px;
+            background:
+                radial-gradient(circle at 18% 18%, rgba(17, 17, 17, 0.12) 0 2px, transparent 2px 13px),
+                linear-gradient(132deg, transparent 0 45%, rgba(21, 76, 139, 0.72) 45% 49%, transparent 49%),
+                linear-gradient(132deg, transparent 0 53%, rgba(215, 25, 32, 0.92) 53% 61%, transparent 61%),
+                linear-gradient(22deg, transparent 0 68%, rgba(17, 17, 17, 0.94) 68% 74%, transparent 74%),
+                linear-gradient(104deg, transparent 0 9%, rgba(215, 25, 32, 0.88) 9% 13%, transparent 13%),
+                repeating-linear-gradient(90deg, rgba(17, 17, 17, 0.05) 0 1px, transparent 1px 38px),
+                var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before,
+        body::after {
+            content: '';
+            position: fixed;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::before {
+            left: -84px;
+            bottom: -74px;
+            width: 310px;
+            height: 310px;
+            border: 34px solid var(--black);
+            transform: rotate(18deg);
+        }
+
+        body::after {
+            right: 5vw;
+            top: 8vh;
+            width: 190px;
+            height: 52px;
+            background: var(--blue);
+            border: 4px solid var(--black);
+            transform: rotate(-18deg);
+        }
+
+        .auth-card {
+            width: min(460px, 100%);
+            background: var(--paper);
+            border: 4px solid var(--black);
+            border-radius: 0;
+            box-shadow: 12px 12px 0 var(--black);
+            padding: 32px;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .auth-card::before {
+            content: '';
+            position: absolute;
+            right: -42px;
+            top: 24px;
+            width: 170px;
+            height: 34px;
+            background: var(--red);
+            transform: rotate(-22deg);
+        }
+
+        .logo-title {
+            margin-bottom: 26px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .badge {
+            display: inline-block;
+            background: var(--black);
+            color: var(--paper);
+            padding: 8px 10px;
+            font-size: 0.72rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            transform: rotate(-2deg);
+        }
+
+        h1 {
+            font-family: var(--display);
+            font-size: clamp(2.2rem, 10vw, 3.5rem);
+            line-height: 0.92;
+            letter-spacing: 0;
+            margin: 16px 0 8px;
+            text-transform: uppercase;
+        }
+
+        .subcopy {
+            color: var(--muted);
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 0.78rem;
+        }
+
+        .tab-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            border: 3px solid var(--black);
+            margin-bottom: 22px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .tab-btn {
+            min-height: 46px;
+            border: 0;
+            border-right: 3px solid var(--black);
+            background: var(--paper-deep);
+            color: var(--black);
+            font-weight: 900;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        .tab-btn:last-child { border-right: 0; }
+        .tab-btn.active { background: var(--red); color: #ffffff; }
+
+        .form-group { margin-bottom: 16px; }
+
+        label {
+            display: block;
+            color: var(--muted);
+            font-size: 0.78rem;
+            font-weight: 900;
+            margin-bottom: 7px;
+            text-transform: uppercase;
+        }
+
+        input {
+            width: 100%;
+            padding: 13px 14px;
+            background: #fffaf0;
+            border: 3px solid var(--black);
+            border-radius: 0;
+            color: var(--black);
+            font: 700 0.95rem 'Inter', sans-serif;
+            outline: none;
+        }
+
+        input:focus { box-shadow: 5px 5px 0 var(--blue); }
+
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            background: var(--black);
+            border: 3px solid var(--black);
+            border-radius: 0;
+            color: var(--paper);
+            font-weight: 900;
+            font-size: 0.98rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: 6px 6px 0 var(--red);
+            margin-top: 6px;
+        }
+
+        .btn-submit:hover {
+            background: var(--red);
+            color: #ffffff;
+            box-shadow: 6px 6px 0 var(--black);
+        }
+
+        .alert-error {
+            display: none;
+            background: var(--red);
+            border: 3px solid var(--black);
+            color: #ffffff;
+            padding: 12px;
+            font-size: 0.82rem;
+            font-weight: 900;
+            margin-bottom: 18px;
+            text-transform: uppercase;
+        }
+
+        @media (max-width: 520px) {
+            .auth-card {
+                padding: 24px;
+                box-shadow: 7px 7px 0 var(--black);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-card">
+        <div class="logo-title">
+            <span class="badge">ShortURL Platform</span>
+            <h1>Welcome Back</h1>
+            <p class="subcopy">Sign in to manage your shortened links</p>
+        </div>
+
+        <div class="tab-buttons">
+            <button class="tab-btn active" id="loginTabBtn" onclick="switchTab('login')">Sign In</button>
+            <button class="tab-btn" id="registerTabBtn" onclick="switchTab('register')">Register</button>
+        </div>
+
+        <div id="errorAlert" class="alert-error"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label>Email or Username</label>
+                <input type="text" id="loginIdentifier" placeholder="user@example.com" required>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="loginPassword" placeholder="Password" required>
+            </div>
+            <button type="submit" class="btn-submit">Sign In to Dashboard</button>
+        </form>
+
+        <form id="registerForm" style="display: none;">
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" id="regEmail" placeholder="user@example.com" required>
+            </div>
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="regUsername" placeholder="johndoe" required>
+            </div>
+            <div class="form-group">
+                <label>Password Min 6 Characters</label>
+                <input type="password" id="regPassword" placeholder="Password" required>
+            </div>
+            <button type="submit" class="btn-submit">Create Account</button>
+        </form>
+    </div>
+
+    <script>
+        async function checkAuth() {
+            try {
+                const res = await fetch('/api/v1/auth/me');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.user.role === 'ADMIN') {
+                        window.location.href = '/admin';
+                    } else {
+                        window.location.href = '/dashboard';
+                    }
+                }
+            } catch(e){}
+        }
+        checkAuth();
+
+        function switchTab(mode) {
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const loginBtn = document.getElementById('loginTabBtn');
+            const regBtn = document.getElementById('registerTabBtn');
+            const errorAlert = document.getElementById('errorAlert');
+
+            errorAlert.style.display = 'none';
+
+            if (mode === 'login') {
+                loginForm.style.display = 'block';
+                registerForm.style.display = 'none';
+                loginBtn.classList.add('active');
+                regBtn.classList.remove('active');
+            } else {
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'block';
+                regBtn.classList.add('active');
+                loginBtn.classList.remove('active');
+            }
+        }
+
+        function showError(msg) {
+            const alert = document.getElementById('errorAlert');
+            alert.innerText = msg;
+            alert.style.display = 'block';
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const identifier = document.getElementById('loginIdentifier').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                const res = await fetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ identifier, password })
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    showError(data.error || 'Authentication failed');
+                    return;
+                }
+
+                if (data.user.role === 'ADMIN') {
+                    window.location.href = '/admin';
+                } else {
+                    window.location.href = '/dashboard';
+                }
+            } catch (err) {
+                showError('Network error connecting to authentication service.');
+            }
+        });
+
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('regEmail').value;
+            const username = document.getElementById('regUsername').value;
+            const password = document.getElementById('regPassword').value;
+
+            try {
+                const res = await fetch('/api/v1/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, username, password })
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    showError(data.error || 'Registration failed');
+                    return;
+                }
+
+                if (data.user.role === 'ADMIN') {
+                    window.location.href = '/admin';
+                } else {
+                    window.location.href = '/dashboard';
+                }
+            } catch (err) {
+                showError('Network error connecting to registration service.');
+            }
+        });
+    </script>
+</body>
+</html>

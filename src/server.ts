@@ -3,6 +3,7 @@ dotenv.config();
 
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 import { generateRandomBase62, LRUCache } from './utils';
 import { UrlRecord, ShortenRequest } from './types';
@@ -10,29 +11,41 @@ import {
     initDatabase, 
     saveUrlRecord, 
     getUrlRecord, 
-    getAllUrlRecords, 
-    recordClick, 
-    getSystemStatsFromDb 
+    getUserUrlRecords,
+    deleteUserUrlRecord,
+    recordClick
 } from './db';
+import authRoutes from './routes/auth';
+import adminRoutes from './routes/admin';
+import { authenticateUser, AuthenticatedRequest } from './middleware/auth';
+import { apiRateLimiter, authRateLimiter, redirectRateLimiter, shortenRateLimiter } from './middleware/rateLimit';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(cors({
+    origin: true,
+    credentials: true
+}));
 app.use(express.json());
+app.use(cookieParser());
 app.use(express.static(path.join(__dirname, '../public')));
 
 // LRU Cache for hot URL lookups
 const cache = new LRUCache<string, UrlRecord>(1000);
-
 let cacheHits = 0;
 let cacheMisses = 0;
 
+// Share cache instance & counters with admin routes
+app.set('lruCache', cache);
+app.set('cacheHits', cacheHits);
+app.set('cacheMisses', cacheMisses);
+
 // Initialize DB on server start
 initDatabase().then(() => {
-    console.log("[Database] Persistent database initialized (urls.db). Zero seed data loaded.");
+    console.log("[Database] Database connection established.");
 }).catch(err => {
-    console.error("[Database Error] Failed to initialize SQLite database:", err);
+    console.error("[Database Error] Failed to initialize database:", err);
 });
 
 function isValidUrl(stringUrl: string): boolean {
@@ -44,9 +57,37 @@ function isValidUrl(stringUrl: string): boolean {
     }
 }
 
-// 1. Create Short URL Endpoint
-app.post('/api/v1/shorten', async (req: Request<{}, {}, ShortenRequest>, res: Response): Promise<any> => {
+function isExpired(expiresAt: string | null | undefined, now = Date.now()): boolean {
+    if (!expiresAt) return false;
+
+    const expiryTime = Date.parse(expiresAt);
+    return Number.isFinite(expiryTime) && expiryTime <= now;
+}
+
+function shouldSkipShortCodeRoute(shortCode: string): boolean {
+    return shortCode.includes('.') ||
+        shortCode === 'api' ||
+        shortCode === 'dashboard' ||
+        shortCode === 'admin' ||
+        shortCode === 'login';
+}
+
+// --- AUTH ROUTES ---
+app.use('/api/v1/auth', authRateLimiter, authRoutes);
+
+// --- ADMIN ROUTES ---
+app.use('/api/v1/admin', apiRateLimiter, adminRoutes);
+
+// --- PROTECTED USER URL ROUTES ---
+
+/**
+ * 1. POST /api/v1/shorten
+ * Create Short URL (Authenticated User required)
+ * Automatically binds ownerId to req.user.id
+ */
+app.post('/api/v1/shorten', apiRateLimiter, shortenRateLimiter, authenticateUser, async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     const { url, custom_alias, ttl_seconds } = req.body;
+    const userId = req.user!.id;
 
     if (!url || !isValidUrl(url)) {
         return res.status(400).json({ error: "Invalid URL provided. Please include http:// or https://" });
@@ -78,20 +119,20 @@ app.post('/api/v1/shorten', async (req: Request<{}, {}, ShortenRequest>, res: Re
         ? new Date(now.getTime() + ttlParsed * 1000).toISOString()
         : null;
 
-    const record: UrlRecord = {
-        id: null, // Assigned by SQLite
+    const recordInput: UrlRecord = {
+        id: null,
         shortCode,
         originalUrl: url,
         customAlias: custom_alias || null,
+        ownerId: userId, // Securely set from req.user.id
         createdAt: now.toISOString(),
         expiresAt,
         clickCount: 0,
         clicksLog: []
     };
 
-    // Save to persistent database & warm LRU Cache
-    await saveUrlRecord(record);
-    cache.set(shortCode, record);
+    const savedRecord = await saveUrlRecord(recordInput);
+    cache.set(shortCode, savedRecord);
 
     const protocol = req.protocol;
     const host = req.get('host');
@@ -102,19 +143,38 @@ app.post('/api/v1/shorten', async (req: Request<{}, {}, ShortenRequest>, res: Re
         short_url: shortUrl,
         original_url: url,
         expires_at: expiresAt,
-        created_at: record.createdAt
+        created_at: savedRecord.createdAt
     });
 });
 
-// 2. Short URL Analytics Endpoint
-app.get('/api/v1/analytics/:short_code', async (req: Request, res: Response): Promise<any> => {
+/**
+ * 2. GET /api/v1/links
+ * Fetch User's Recent Links ONLY (Scoped by req.user.id)
+ */
+app.get('/api/v1/links', apiRateLimiter, authenticateUser, async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+    const userId = req.user!.id;
+    const userRecords = await getUserUrlRecords(userId);
+
+    return res.json(userRecords.map(record => ({
+        short_code: record.shortCode,
+        original_url: record.originalUrl,
+        click_count: record.clickCount,
+        created_at: record.createdAt,
+        expires_at: record.expiresAt,
+        is_expired: isExpired(record.expiresAt)
+    })));
+});
+
+/**
+ * 3. GET /api/v1/analytics/:short_code
+ * Get Analytics for a link owned by the authenticated user (Prevents IDOR)
+ */
+app.get('/api/v1/analytics/:short_code', apiRateLimiter, authenticateUser, async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     const short_code = Array.isArray(req.params.short_code) ? req.params.short_code[0] : req.params.short_code;
-    
+    const userId = req.user!.id;
+
     let record = cache.get(short_code);
-    if (record) {
-        cacheHits++;
-    } else {
-        cacheMisses++;
+    if (!record) {
         record = await getUrlRecord(short_code);
         if (record) cache.set(short_code, record);
     }
@@ -123,57 +183,62 @@ app.get('/api/v1/analytics/:short_code', async (req: Request, res: Response): Pr
         return res.status(404).json({ error: "Short URL not found" });
     }
 
+    // Ownership check (Unless user is ADMIN)
+    if (record.ownerId !== userId && req.user!.role !== 'ADMIN') {
+        return res.status(403).json({ error: "Forbidden. You do not own this URL." });
+    }
+
     return res.json({
         short_code: record.shortCode,
         original_url: record.originalUrl,
         click_count: record.clickCount,
         created_at: record.createdAt,
         expires_at: record.expiresAt,
+        is_expired: isExpired(record.expiresAt),
         recent_clicks: record.clicksLog.slice(-10)
     });
 });
 
-// 3. Get All Active Stored Links Endpoint
-app.get('/api/v1/links', async (_req: Request, res: Response): Promise<any> => {
-    const records = await getAllUrlRecords();
-    return res.json(records.map(record => ({
-        short_code: record.shortCode,
-        original_url: record.originalUrl,
-        click_count: record.clickCount,
-        created_at: record.createdAt,
-        expires_at: record.expiresAt
-    })));
-});
-
-// 4. System Stats Endpoint
-app.get('/api/v1/system/stats', async (_req: Request, res: Response) => {
-    const dbStats = await getSystemStatsFromDb();
-    const totalRequests = cacheHits + cacheMisses;
-    const hitRate = totalRequests > 0 
-        ? ((cacheHits / totalRequests) * 100).toFixed(1)
-        : "100";
-
-    res.json({
-        system_stats: {
-            totalShortened: dbStats.totalShortened,
-            totalRedirects: dbStats.totalRedirects,
-            cacheHits,
-            cacheMisses
-        },
-        cache_hit_rate: `${hitRate}%`,
-        active_records: dbStats.totalShortened,
-        cache_size: cache.size()
-    });
-});
-
-// 5. Redirect Engine Endpoint (GET /{short_code})
-app.get('/:short_code', async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+/**
+ * 4. DELETE /api/v1/links/:short_code
+ * Delete short URL (Ownership verified)
+ */
+app.delete('/api/v1/links/:short_code', apiRateLimiter, authenticateUser, async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     const short_code = Array.isArray(req.params.short_code) ? req.params.short_code[0] : req.params.short_code;
+    const userId = req.user!.id;
 
-    if (short_code.includes('.') || short_code === 'api' || short_code === 'favicon.ico') {
-        return next();
+    const record = await getUrlRecord(short_code);
+    if (!record) {
+        return res.status(404).json({ error: "Short URL not found" });
     }
 
+    if (record.ownerId !== userId && req.user!.role !== 'ADMIN') {
+        return res.status(403).json({ error: "Forbidden. You cannot delete this URL." });
+    }
+
+    await deleteUserUrlRecord(short_code, userId);
+    cache.delete(short_code);
+
+    return res.json({ message: "Short link deleted successfully." });
+});
+
+// --- PUBLIC ROUTE ---
+
+/**
+ * 5. GET /{short_code}
+ * PUBLIC 302 REDIRECT ENGINE (No Auth Required)
+ * Flow: LRU Memory Cache -> MongoDB -> Warm Cache -> 302 Redirect (or 410 Expired)
+ */
+app.get('/:short_code', (req: Request, _res: Response, next: NextFunction) => {
+    const short_code = Array.isArray(req.params.short_code) ? req.params.short_code[0] : req.params.short_code;
+
+    if (shouldSkipShortCodeRoute(short_code)) {
+        return next('route');
+    }
+
+    return redirectRateLimiter(req, _res, next);
+}, async (req: Request, res: Response): Promise<any> => {
+    const short_code = Array.isArray(req.params.short_code) ? req.params.short_code[0] : req.params.short_code;
     const startTime = process.hrtime();
 
     let record = cache.get(short_code);
@@ -182,23 +247,25 @@ app.get('/:short_code', async (req: Request, res: Response, next: NextFunction):
     if (!record) {
         fromCache = false;
         cacheMisses++;
-        console.log(`[LOOKUP MISS] 🗄️ Querying MongoDB Database for code: /${short_code}`);
+        app.set('cacheMisses', cacheMisses);
         record = await getUrlRecord(short_code);
     } else {
         cacheHits++;
-        console.log(`[LOOKUP HIT] ⚡ Served from LRU Memory Cache for code: /${short_code}`);
+        app.set('cacheHits', cacheHits);
     }
 
     if (!record) {
         return res.status(404).sendFile(path.join(__dirname, '../public', '404.html'));
     }
 
-    if (record.expiresAt && new Date(record.expiresAt) < new Date()) {
+    // Check link expiration (TTL)
+    if (isExpired(record.expiresAt)) {
         return res.status(410).send(`
-            <div style="font-family:sans-serif; text-align:center; padding: 50px;">
-                <h1 style="color:#e11d48;">410 Link Expired</h1>
-                <p>This shortened URL reached its expiration time and is no longer available.</p>
-                <a href="/">Go to Home</a>
+            <div style="font-family:sans-serif; text-align:center; padding: 50px; background:#0f172a; color:#fff; min-height:100vh;">
+                <h1 style="color:#e11d48; font-size: 2.5rem;">410 Link Expired</h1>
+                <p style="color:#9ca3af;">This shortened URL reached its expiration time and is no longer available.</p>
+                <br/>
+                <a href="/login" style="color:#38bdf8; text-decoration:none; font-weight:bold;">Return to Home</a>
             </div>
         `);
     }
@@ -213,7 +280,6 @@ app.get('/:short_code', async (req: Request, res: Response, next: NextFunction):
         cached: fromCache
     };
 
-    // Async record click in DB & update local record memory
     record.clickCount++;
     record.clicksLog.push(clickEntry);
     cache.set(short_code, record);
@@ -221,6 +287,19 @@ app.get('/:short_code', async (req: Request, res: Response, next: NextFunction):
     await recordClick(short_code, clickEntry);
 
     return res.redirect(302, record.originalUrl);
+});
+
+// SPA Route Handlers
+app.get('/dashboard', (_req: Request, res: Response) => {
+    res.sendFile(path.join(__dirname, '../public', 'dashboard.html'));
+});
+
+app.get('/admin', (_req: Request, res: Response) => {
+    res.sendFile(path.join(__dirname, '../public', 'admin.html'));
+});
+
+app.get('/login', (_req: Request, res: Response) => {
+    res.sendFile(path.join(__dirname, '../public', 'login.html'));
 });
 
 app.listen(PORT, () => {

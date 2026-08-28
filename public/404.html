@@ -1,17 +1,140 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>404 Not Found</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwiftURL | 404</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@800;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 50px; background: #0f172a; color: #fff; }
-        h1 { color: #f43f5e; font-size: 3rem; }
-        a { color: #38bdf8; text-decoration: none; font-weight: bold; }
+        :root {
+            --bg: #e9dfc7;
+            --paper: #f7efd8;
+            --black: #111111;
+            --red: #d71920;
+            --blue: #154c8b;
+            --display: 'Archivo Black', 'Inter', sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            background:
+                radial-gradient(circle at 78% 22%, rgba(17, 17, 17, 0.13) 0 2px, transparent 2px 13px),
+                linear-gradient(132deg, transparent 0 41%, rgba(21, 76, 139, 0.72) 41% 46%, transparent 46%),
+                linear-gradient(132deg, transparent 0 50%, rgba(215, 25, 32, 0.94) 50% 59%, transparent 59%),
+                linear-gradient(22deg, transparent 0 72%, rgba(17, 17, 17, 0.94) 72% 77%, transparent 77%),
+                linear-gradient(104deg, transparent 0 9%, rgba(215, 25, 32, 0.88) 9% 13%, transparent 13%),
+                repeating-linear-gradient(90deg, rgba(17, 17, 17, 0.05) 0 1px, transparent 1px 38px),
+                var(--bg);
+            color: var(--black);
+            font-family: 'Inter', sans-serif;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before,
+        body::after {
+            content: '';
+            position: fixed;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::before {
+            left: -84px;
+            bottom: -74px;
+            width: 310px;
+            height: 310px;
+            border: 34px solid var(--black);
+            transform: rotate(18deg);
+        }
+
+        body::after {
+            right: 5vw;
+            top: 8vh;
+            width: 190px;
+            height: 52px;
+            background: var(--blue);
+            border: 4px solid var(--black);
+            transform: rotate(-18deg);
+        }
+
+        .poster {
+            width: min(680px, 100%);
+            background: var(--paper);
+            border: 4px solid var(--black);
+            box-shadow: 12px 12px 0 var(--black);
+            padding: 36px;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .poster::before {
+            content: '';
+            position: absolute;
+            left: -30px;
+            top: 24px;
+            width: 160px;
+            height: 34px;
+            background: var(--red);
+            transform: rotate(-24deg);
+        }
+
+        .code {
+            display: inline-block;
+            background: var(--black);
+            color: var(--paper);
+            font-family: var(--mono);
+            padding: 8px 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        h1 {
+            font-family: var(--display);
+            font-size: clamp(3rem, 16vw, 7rem);
+            line-height: 0.86;
+            letter-spacing: 0;
+            margin: 22px 0 16px;
+            text-transform: uppercase;
+            position: relative;
+            z-index: 1;
+        }
+
+        p {
+            color: #4a4035;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin-bottom: 24px;
+        }
+
+        a {
+            display: inline-block;
+            background: var(--red);
+            border: 3px solid var(--black);
+            box-shadow: 6px 6px 0 var(--black);
+            color: #ffffff;
+            font-weight: 900;
+            padding: 12px 16px;
+            text-decoration: none;
+            text-transform: uppercase;
+        }
     </style>
 </head>
 <body>
-    <h1>404 - Short Link Not Found</h1>
-    <p>The short code you requested does not exist or has been removed.</p>
-    <br/>
-    <a href="/">Back to Dashboard</a>
+    <main class="poster">
+        <span class="code">404</span>
+        <h1>Link Not Found</h1>
+        <p>The short code does not exist or has been removed.</p>
+        <a href="/">Back to Dashboard</a>
+    </main>
 </body>
 </html>
