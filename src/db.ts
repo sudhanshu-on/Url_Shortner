@@ -58,39 +58,70 @@ UrlSchema.index({ ownerId: 1, createdAt: -1 });
 export const UrlModel = mongoose.model<IUrlDocument>('Url', UrlSchema);
 
 // Database initialization
-let connectionPromise: Promise<typeof mongoose> | null = null;
+interface MongooseCache {
+    conn: typeof mongoose | null;
+    promise: Promise<typeof mongoose> | null;
+}
 
-export async function initDatabase(): Promise<void> {
+declare global {
+    var mongooseCache: MongooseCache | undefined;
+}
+
+const cached: MongooseCache = global.mongooseCache || {
+    conn: null,
+    promise: null
+};
+
+global.mongooseCache = cached;
+
+export async function initDatabase(): Promise<typeof mongoose | null> {
+
     // Already connected
-    if (mongoose.connection.readyState === 1) {
-        return;
+    if (cached.conn && mongoose.connection.readyState === 1) {
+        return cached.conn;
     }
 
-    // A connection attempt is already in progress.
-    // Reuse it instead of creating another connection.
-    if (connectionPromise) {
-        await connectionPromise;
-        return;
+    // Connection is already being established.
+    // Don't create another connection.
+    if (cached.promise) {
+        try {
+            cached.conn = await cached.promise;
+            return cached.conn;
+        } catch (error) {
+            cached.promise = null;
+            throw error;
+        }
     }
 
-    console.log(`[Database] Attempting connection to MongoDB...`);
+    console.log("[Database] Creating MongoDB connection...");
 
-    connectionPromise = mongoose.connect(MONGODB_URI, {
-        serverSelectionTimeoutMS: 5000,
-        maxPoolSize: 10,
+    cached.promise = mongoose.connect(MONGODB_URI, {
+        maxPoolSize: 5,
         minPoolSize: 0,
+
+        serverSelectionTimeoutMS: 5000,
+
+        maxIdleTimeMS: 30000,
+
+        waitQueueTimeoutMS: 5000
     });
 
     try {
-        await connectionPromise;
+        cached.conn = await cached.promise;
 
-        console.log(`[Database] ✅ Connected successfully to MongoDB`);
+        console.log("[Database] ✅ Connected to MongoDB");
+
+        return cached.conn;
+
     } catch (error: any) {
-        console.error(`[Database Error] ❌ Could not connect to MongoDB`);
-        console.error(`Error details: ${error.message}`);
 
-        // Allow a future request to retry the connection
-        connectionPromise = null;
+        console.error(
+            "[Database] ❌ MongoDB connection failed:",
+            error.message
+        );
+
+        cached.promise = null;
+        cached.conn = null;
 
         throw error;
     }
