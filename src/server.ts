@@ -230,7 +230,9 @@ app.delete('/api/v1/links/:short_code', apiRateLimiter, authenticateUser, async 
  * Flow: LRU Memory Cache -> MongoDB -> Warm Cache -> 302 Redirect (or 410 Expired)
  */
 app.get('/:short_code', (req: Request, _res: Response, next: NextFunction) => {
-    const short_code = Array.isArray(req.params.short_code) ? req.params.short_code[0] : req.params.short_code;
+    const short_code = Array.isArray(req.params.short_code)
+    ? req.params.short_code[0] 
+    : req.params.short_code;
 
     if (shouldSkipShortCodeRoute(short_code)) {
         return next('route');

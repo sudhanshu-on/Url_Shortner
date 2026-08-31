@@ -58,20 +58,44 @@ UrlSchema.index({ ownerId: 1, createdAt: -1 });
 export const UrlModel = mongoose.model<IUrlDocument>('Url', UrlSchema);
 
 // Database initialization
+let connectionPromise: Promise<typeof mongoose> | null = null;
+
 export async function initDatabase(): Promise<void> {
-    if (mongoose.connection.readyState === 1) return;
-    
-    console.log(`[Database] Attempting connection to MongoDB.`);
-    try {
-        await mongoose.connect(MONGODB_URI, {
-            serverSelectionTimeoutMS: 5000
-        });
-        console.log(`[Database] ✅ Connected successfully to MongoDB`);
-    } catch (error: any) {
-        console.error(`\n[Database Error] ❌ Could not connect to MongoDB.`);
-        console.error(`Error details: ${error.message}`);
+    if (mongoose.connection.readyState === 1) {
+        return;
     }
+
+    if (!connectionPromise) {
+        console.log('[Database] Attempting connection to MongoDB...');
+
+        connectionPromise = mongoose.connect(MONGODB_URI, {
+            serverSelectionTimeoutMS: 5000
+        }).catch((error) => {
+            connectionPromise = null;
+            console.error('[Database Error] ❌ Could not connect to MongoDB.');
+            console.error('Error details:', error.message);
+            throw error;
+        });
+    }
+
+    await connectionPromise;
 }
+
+// export async function initDatabase(): Promise<void> {
+//     if (mongoose.connection.readyState === 1) return;
+    
+//     console.log(`[Database] Attempting connection to MongoDB.`);
+//     try {
+//         await mongoose.connect(MONGODB_URI, {
+//             serverSelectionTimeoutMS: 5000
+//         });
+//         console.log(`[Database] ✅ Connected successfully to MongoDB`);
+//     } catch (error: any) {
+//         console.error(`\n[Database Error] ❌ Could not connect to MongoDB.`);
+//         console.error(`Error details: ${error.message}`);
+//         throw error; //changed here
+// }
+// }
 
 // URL Database Functions with Owner Scoping
 export async function saveUrlRecord(record: UrlRecord): Promise<UrlRecord> {
@@ -98,8 +122,7 @@ export async function saveUrlRecord(record: UrlRecord): Promise<UrlRecord> {
 
 export async function getUrlRecord(shortCode: string): Promise<UrlRecord | null> {
     await initDatabase();
-    if (mongoose.connection.readyState !== 1) return null;
-
+    // if (mongoose.connection.readyState !== 1) return null; //changed here
     const doc = await UrlModel.findOne({ shortCode }).lean();
     if (!doc) return null;
 
@@ -150,7 +173,7 @@ export async function deleteUserUrlRecord(shortCode: string, ownerId: string): P
 
 export async function recordClick(shortCode: string, entry: ClickLogEntry): Promise<void> {
     await initDatabase();
-    if (mongoose.connection.readyState !== 1) return;
+    // if (mongoose.connection.readyState !== 1) return; changed here
 
     await UrlModel.updateOne(
         { shortCode },
