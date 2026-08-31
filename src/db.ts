@@ -61,16 +61,19 @@ export const UrlModel = mongoose.model<IUrlDocument>('Url', UrlSchema);
 let connectionPromise: Promise<typeof mongoose> | null = null;
 
 export async function initDatabase(): Promise<void> {
+    // Already connected
     if (mongoose.connection.readyState === 1) {
         return;
     }
 
+    // A connection attempt is already in progress.
+    // Reuse it instead of creating another connection.
     if (connectionPromise) {
         await connectionPromise;
         return;
     }
 
-    console.log('[Database] Attempting connection to MongoDB...');
+    console.log(`[Database] Attempting connection to MongoDB...`);
 
     connectionPromise = mongoose.connect(MONGODB_URI, {
         serverSelectionTimeoutMS: 5000,
@@ -81,16 +84,18 @@ export async function initDatabase(): Promise<void> {
     try {
         await connectionPromise;
 
-        console.log('[Database] ✅ Connected successfully to MongoDB');
+        console.log(`[Database] ✅ Connected successfully to MongoDB`);
     } catch (error: any) {
-        console.error('[Database Error] ❌ Could not connect to MongoDB');
+        console.error(`[Database Error] ❌ Could not connect to MongoDB`);
         console.error(`Error details: ${error.message}`);
 
+        // Allow a future request to retry the connection
         connectionPromise = null;
 
         throw error;
     }
 }
+
 // export async function initDatabase(): Promise<void> {
 //     if (mongoose.connection.readyState === 1) return;
     
