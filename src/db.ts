@@ -61,24 +61,35 @@ export const UrlModel = mongoose.model<IUrlDocument>('Url', UrlSchema);
 let connectionPromise: Promise<typeof mongoose> | null = null;
 
 export async function initDatabase(): Promise<void> {
+    // Already connected
     if (mongoose.connection.readyState === 1) {
         return;
     }
 
-    if (!connectionPromise) {
-        console.log('[Database] Attempting connection to MongoDB...');
-
-        connectionPromise = mongoose.connect(MONGODB_URI, {
-            serverSelectionTimeoutMS: 5000
-        }).catch((error) => {
-            connectionPromise = null;
-            console.error('[Database Error] ❌ Could not connect to MongoDB.');
-            console.error('Error details:', error.message);
-            throw error;
-        });
+    // Connection is already being established
+    if (connectionPromise) {
+        await connectionPromise;
+        return;
     }
 
-    await connectionPromise;
+    console.log('[Database] Attempting connection to MongoDB...');
+
+    connectionPromise = mongoose.connect(MONGODB_URI, {
+        serverSelectionTimeoutMS: 5000,
+    });
+
+    try {
+        await connectionPromise;
+        console.log('[Database] ✅ Connected successfully to MongoDB');
+    } catch (error: any) {
+        console.error('[Database Error] ❌ Could not connect to MongoDB');
+        console.error(`Error details: ${error.message}`);
+
+        // Allow a future request to retry
+        connectionPromise = null;
+
+        throw error;
+    }
 }
 
 // export async function initDatabase(): Promise<void> {
@@ -122,7 +133,7 @@ export async function saveUrlRecord(record: UrlRecord): Promise<UrlRecord> {
 
 export async function getUrlRecord(shortCode: string): Promise<UrlRecord | null> {
     await initDatabase();
-    // if (mongoose.connection.readyState !== 1) return null; //changed here
+    if (mongoose.connection.readyState !== 1) return null; 
     const doc = await UrlModel.findOne({ shortCode }).lean();
     if (!doc) return null;
 
@@ -173,7 +184,7 @@ export async function deleteUserUrlRecord(shortCode: string, ownerId: string): P
 
 export async function recordClick(shortCode: string, entry: ClickLogEntry): Promise<void> {
     await initDatabase();
-    // if (mongoose.connection.readyState !== 1) return; changed here
+    if (mongoose.connection.readyState !== 1) return; 
 
     await UrlModel.updateOne(
         { shortCode },
