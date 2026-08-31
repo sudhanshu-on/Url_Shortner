@@ -61,12 +61,10 @@ export const UrlModel = mongoose.model<IUrlDocument>('Url', UrlSchema);
 let connectionPromise: Promise<typeof mongoose> | null = null;
 
 export async function initDatabase(): Promise<void> {
-    // Already connected
     if (mongoose.connection.readyState === 1) {
         return;
     }
 
-    // Connection is already being established
     if (connectionPromise) {
         await connectionPromise;
         return;
@@ -76,22 +74,23 @@ export async function initDatabase(): Promise<void> {
 
     connectionPromise = mongoose.connect(MONGODB_URI, {
         serverSelectionTimeoutMS: 5000,
+        maxPoolSize: 10,
+        minPoolSize: 0,
     });
 
     try {
         await connectionPromise;
+
         console.log('[Database] ✅ Connected successfully to MongoDB');
     } catch (error: any) {
         console.error('[Database Error] ❌ Could not connect to MongoDB');
         console.error(`Error details: ${error.message}`);
 
-        // Allow a future request to retry
         connectionPromise = null;
 
         throw error;
     }
 }
-
 // export async function initDatabase(): Promise<void> {
 //     if (mongoose.connection.readyState === 1) return;
     
