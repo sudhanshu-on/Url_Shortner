@@ -96,7 +96,7 @@ export async function initDatabase(): Promise<typeof mongoose | null> {
     console.log("[Database] Creating MongoDB connection...");
 
     cached.promise = mongoose.connect(MONGODB_URI, {
-        maxPoolSize: 5,
+        maxPoolSize: 10,
         minPoolSize: 0,
 
         serverSelectionTimeoutMS: 5000,
