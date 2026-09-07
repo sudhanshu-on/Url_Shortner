@@ -286,7 +286,9 @@ app.get('/:short_code', (req: Request, _res: Response, next: NextFunction) => {
     record.clicksLog.push(clickEntry);
     cache.set(short_code, record);
 
-    await recordClick(short_code, clickEntry);
+    recordClick(short_code, clickEntry).catch((err) => {
+        console.error('[Analytics] Failed to record click:', err);
+    });
 
     return res.redirect(302, record.originalUrl);
 });
