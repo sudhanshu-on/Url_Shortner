@@ -306,7 +306,7 @@
         <div class="grid-layout">
             <!-- Create Short URL Section -->
             <div class="card">
-                <div class="card-title">Create Short URL</div>
+                <div class="card-title">Create ShortURL</div>
                 <form id="shortenForm">
                     <div class="form-group">
                         <label>Original Long URL</label>
@@ -320,11 +320,11 @@
                         <label>Expiration TTL in Seconds (Optional)</label>
                         <input type="number" id="ttlSeconds" placeholder="e.g. 3600 for 1 hour">
                     </div>
-                    <button type="submit" id="submitBtn" class="btn-submit">Generate Short Link</button>
+                    <button type="submit" id="submitBtn" class="btn-submit">Generate ShortURL</button>
                 </form>
 
                 <div id="buildingBox" class="building-box">
-                    <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.3rem;">Building Base62 Short URL...</div>
+                    <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.3rem;">Building Base62 ShortURL...</div>
                     <span id="buildingUrlText" class="typewriter-text"></span>
                 </div>
 
@@ -627,7 +627,7 @@
                     void resultBox.offsetWidth;
                     resultBox.style.animation = 'sw-scaleIn 0.28s ease both';
                     SwAnim.clearButtonLoading(submitBtn);
-                    SwAnim.toast('Short URL created!', 'success', 2200);
+                    SwAnim.toast('ShortURL created!', 'success', 2200);
                     loadUserLinks();
                 }, 400);
 
@@ -635,14 +635,14 @@
                 SwAnim.finishProgress();
                 buildingBox.style.display = 'none';
                 SwAnim.clearButtonLoading(submitBtn);
-                SwAnim.toast('Failed to connect to shortener service.', 'error', 3000);
+                    SwAnim.toast('Failed to connect to ShortURL.', 'error', 3000);
             }
         });
 
         function copyResult() {
             const urlText = document.getElementById('resultUrl').innerText;
             navigator.clipboard.writeText(urlText).then(() => {
-                SwAnim.toast('Short URL copied!', 'copy', 2000);
+                SwAnim.toast('ShortURL copied!', 'copy', 2000);
             }).catch(() => {
                 // fallback
                 const ta = document.createElement('textarea');
@@ -651,7 +651,7 @@
                 ta.select();
                 document.execCommand('copy');
                 document.body.removeChild(ta);
-                SwAnim.toast('Short URL copied!', 'copy', 2000);
+                SwAnim.toast('ShortURL copied!', 'copy', 2000);
             });
         }
 

@@ -10,14 +10,14 @@ import { UrlRecord, ShortenRequest } from './types';
 import { 
     initDatabase, 
     saveUrlRecord, 
-    getUrlRecord, 
+    getUrlRecord,
     getUserUrlRecords,
     deleteUserUrlRecord,
     recordClick
 } from './db';
 import authRoutes from './routes/auth';
 import adminRoutes from './routes/admin';
-import { authenticateUser, AuthenticatedRequest } from './middleware/auth';
+import { authenticateUser, optionallyAuthenticateUser, AuthenticatedRequest } from './middleware/auth';
 import { apiRateLimiter, authRateLimiter, redirectRateLimiter, shortenRateLimiter } from './middleware/rateLimit';
 
 const app = express();
@@ -78,16 +78,17 @@ app.use('/api/v1/auth', authRateLimiter, authRoutes);
 // --- ADMIN ROUTES ---
 app.use('/api/v1/admin', apiRateLimiter, adminRoutes);
 
-// --- PROTECTED USER URL ROUTES ---
+// --- URL ROUTES ---
 
 /**
  * 1. POST /api/v1/shorten
- * Create Short URL (Authenticated User required)
- * Automatically binds ownerId to req.user.id
+ * Create ShortURL (authentication optional)
+ * Authenticated requests are linked to the user's dashboard; anonymous requests
+ * remain public and can still be rate limited by client IP.
  */
-app.post('/api/v1/shorten', apiRateLimiter, shortenRateLimiter, authenticateUser, async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+app.post('/api/v1/shorten', apiRateLimiter, shortenRateLimiter, optionallyAuthenticateUser, async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     const { url, custom_alias, ttl_seconds } = req.body;
-    const userId = req.user!.id;
+    const userId = req.user?.id || null;
 
     if (!url || !isValidUrl(url)) {
         return res.status(400).json({ error: "Invalid URL provided. Please include http:// or https://" });
@@ -124,7 +125,7 @@ app.post('/api/v1/shorten', apiRateLimiter, shortenRateLimiter, authenticateUser
         shortCode,
         originalUrl: url,
         customAlias: custom_alias || null,
-        ownerId: userId, // Securely set from req.user.id
+        ownerId: userId,
         createdAt: now.toISOString(),
         expiresAt,
         clickCount: 0,
@@ -180,7 +181,7 @@ app.get('/api/v1/analytics/:short_code', apiRateLimiter, authenticateUser, async
     }
 
     if (!record) {
-        return res.status(404).json({ error: "Short URL not found" });
+        return res.status(404).json({ error: "ShortURL not found" });
     }
 
     // Ownership check (Unless user is ADMIN)
@@ -209,7 +210,7 @@ app.delete('/api/v1/links/:short_code', apiRateLimiter, authenticateUser, async 
 
     const record = await getUrlRecord(short_code);
     if (!record) {
-        return res.status(404).json({ error: "Short URL not found" });
+        return res.status(404).json({ error: "ShortURL not found" });
     }
 
     if (record.ownerId !== userId && req.user!.role !== 'ADMIN') {

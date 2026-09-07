@@ -40,6 +40,33 @@ export function authenticateUser(req: AuthenticatedRequest, res: Response, next:
 }
 
 /**
+ * Resolves a valid JWT when present but allows anonymous requests through.
+ */
+export function optionallyAuthenticateUser(req: AuthenticatedRequest, res: Response, next: NextFunction): any {
+    let token: string | undefined;
+
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+    } else if (req.cookies && req.cookies.auth_token) {
+        token = req.cookies.auth_token;
+    }
+
+    if (!token) {
+        return next();
+    }
+
+    try {
+        req.user = jwt.verify(token, JWT_SECRET) as AuthUserPayload;
+    } catch (_) {
+        // Anonymous shortening remains available when a stale session exists.
+        req.user = undefined;
+    }
+
+    return next();
+}
+
+/**
  * Role-Based Authorization Middleware for Admin Access
  * Rejects non-ADMIN users with 403 Forbidden
  */

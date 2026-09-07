@@ -1,6 +1,6 @@
-# ShortURL - Scalable High-Performance URL Shortener Service
+# ShortURL - Scalable High-Performance Service
 
-ShortURL is a high-availability, low-latency URL Shortener service built with **TypeScript**, **Node.js**, **Express**, and an **in-memory LRU Cache architecture**. It is designed based on enterprise distributed system principles capable of scaling to millions of URL creations and billions of redirects per day with sub-100ms redirect latency.
+ShortURL is a high-availability, low-latency URL shortening service built with **TypeScript**, **Node.js**, **Express**, and an **in-memory LRU Cache architecture**. It is designed based on enterprise distributed system principles capable of scaling to millions of URL creations and billions of redirects per day with sub-100ms redirect latency.
 
 ---
 
@@ -83,9 +83,10 @@ The server will start on **http://localhost:3000**.
 
 ## 📖 API Documentation & Usage
 
-### 1. Create a Short URL
+### 1. Create a ShortURL
 - **Endpoint**: `POST /api/v1/shorten`
 - **Content-Type**: `application/json`
+- **Authentication**: Optional. Anonymous links are public and are still protected by the API and shortening rate limits. Authenticated links appear in the user's dashboard.
 
 #### Request Body
 ```json
@@ -109,14 +110,14 @@ The server will start on **http://localhost:3000**.
 
 ---
 
-### 2. Redirect Short URL
+### 2. Redirect a ShortURL
 - **Endpoint**: `GET /{short_code}`
 - **Behavior**: Responds with an HTTP `302 Found` redirect header pointing to `original_url`.
 - **Latency**: < 5ms for cached hot links.
 
 ---
 
-### 3. Get Short URL Analytics
+### 3. Get ShortURL Analytics
 - **Endpoint**: `GET /api/v1/analytics/{short_code}`
 
 #### Response (`200 OK`)

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShortURL | Loading</title>
+    <title>ShortURL | Shorten a URL</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="/sw-animations.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,9 +13,11 @@
         :root {
             --bg: #e9dfc7;
             --paper: #f7efd8;
+            --paper-deep: #e1d0a8;
             --black: #111111;
             --red: #d71920;
             --blue: #154c8b;
+            --muted: #4a4035;
             --display: 'Archivo Black', 'Inter', sans-serif;
             --mono: 'JetBrains Mono', monospace;
         }
@@ -103,8 +105,99 @@
             animation: sw-pulse 1.4s ease-in-out infinite;
         }
 
+        .account-actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            border: 3px solid var(--black);
+            margin-top: 24px;
+            margin-bottom: 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .account-actions a {
+            padding: 11px 12px;
+            background: var(--paper-deep);
+            color: var(--blue);
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            font-weight: 900;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        .account-actions a:first-child {
+            border-right: 3px solid var(--black);
+        }
+
+        .account-actions a:hover {
+            background: var(--red);
+            color: #ffffff;
+        }
+
         .poster {
             animation: sw-scaleIn 0.3s ease both;
+        }
+
+        form {
+            display: grid;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        input, button {
+            border: 3px solid #111111;
+            padding: 13px 14px;
+            font: inherit;
+        }
+
+        button {
+            background: var(--red);
+            color: #ffffff;
+            cursor: pointer;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        button:disabled {
+            cursor: wait;
+            opacity: 0.7;
+        }
+
+        #result {
+            display: none;
+            margin-top: 18px;
+            padding: 12px;
+            background: #ffffff;
+            border: 3px solid #111111;
+            overflow-wrap: anywhere;
+            position: relative;
+            z-index: 1;
+        }
+
+        .result-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        #resultUrl {
+            flex: 1;
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .copy-button {
+            flex: 0 0 auto;
+            padding: 10px 12px;
+            background: var(--black);
+            color: var(--paper);
+            font-size: 0.78rem;
+        }
+
+        .copy-button:hover {
+            background: var(--blue);
         }
 
         h1 {
@@ -119,7 +212,7 @@
         }
 
         p {
-            color: #4a4035;
+            color: var(--muted);
             font-weight: 900;
             text-transform: uppercase;
             position: relative;
@@ -128,31 +221,79 @@
     </style>
     <script src="/sw-animations.js"></script>
     <script>
-        async function routeUser() {
+        async function shortenUrl(event) {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const button = form.querySelector('button');
+            const result = document.getElementById('result');
+            const resultUrl = document.getElementById('resultUrl');
+            const copyButton = document.getElementById('copyButton');
+            button.disabled = true;
+            button.textContent = 'Creating...';
+            result.style.display = 'none';
+            copyButton.style.display = 'none';
+
             try {
-                const res = await fetch('/api/v1/auth/me');
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.user && data.user.role === 'ADMIN') {
-                        SwAnim.navigateTo('/admin');
-                    } else {
-                        SwAnim.navigateTo('/dashboard');
-                    }
-                } else {
-                    SwAnim.navigateTo('/login');
-                }
-            } catch(e) {
-                SwAnim.navigateTo('/login');
+                const response = await fetch('/api/v1/shorten', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        url: document.getElementById('url').value,
+                        custom_alias: document.getElementById('customAlias').value || undefined,
+                        ttl_seconds: document.getElementById('ttlSeconds').value || undefined
+                    })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Unable to create ShortURL.');
+                resultUrl.textContent = data.short_url;
+                copyButton.style.display = 'block';
+                result.style.display = 'block';
+            } catch (error) {
+                resultUrl.textContent = error.message;
+                result.style.display = 'block';
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Shorten URL';
             }
         }
-        routeUser();
+
+        async function copyShortUrl() {
+            const copyButton = document.getElementById('copyButton');
+            const shortUrl = document.getElementById('resultUrl').textContent;
+
+            try {
+                await navigator.clipboard.writeText(shortUrl);
+                copyButton.textContent = 'Copied';
+                setTimeout(() => { copyButton.textContent = 'Copy'; }, 1600);
+            } catch (error) {
+                copyButton.textContent = 'Copy failed';
+                setTimeout(() => { copyButton.textContent = 'Copy'; }, 1600);
+            }
+        }
     </script>
 </head>
 <body>
     <main class="poster">
-        <span class="badge">Session Check</span>
-        <h1>ShortURL Routing</h1>
-        <p>Checking authentication state</p>
+        <span class="badge">ShortURL</span>
+        <h1>Let it be short</h1>
+        <p>Create short links without an account. Sign in later to manage them.</p>
+        <nav class="account-actions" aria-label="Account options">
+            <a href="/login">Sign in</a>
+            <a href="/login#register">Sign up</a>
+        </nav>
+        <form onsubmit="shortenUrl(event)">
+            <input id="url" type="url" placeholder="https://example.com/long-link" required>
+            <input id="customAlias" type="text" minlength="3" maxlength="30" pattern="[a-zA-Z0-9_-]{3,30}" placeholder="Custom alias (optional)">
+            <input id="ttlSeconds" type="number" min="1" placeholder="Expiry in seconds (optional)">
+            <button type="submit">Shorten URL</button>
+        </form>
+        <div id="result" aria-live="polite">
+            <div class="result-row">
+                <span id="resultUrl"></span>
+                <button id="copyButton" class="copy-button" type="button" onclick="copyShortUrl()">Copy</button>
+            </div>
+        </div>
     </main>
 
 <script src="/sw-animations.js"></script>

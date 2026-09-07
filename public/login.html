@@ -229,6 +229,24 @@
             animation: sw-fadeInDown 0.22s ease both;
         }
 
+        .public-link {
+            margin-top: 24px;
+            color: var(--muted);
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        .public-link a {
+            color: var(--blue);
+            font-weight: 900;
+        }
+
+        .public-link a:hover {
+            color: var(--red);
+        }
+
         @media (max-width: 520px) {
             .auth-card {
                 padding: 24px;
@@ -252,7 +270,7 @@
 <body>
     <div class="auth-card">
         <div class="logo-title">
-            <span class="badge">ShortURL Platform</span>
+            <span class="badge">ShortURL</span>
             <h1>Welcome Back</h1>
             <p class="subcopy">Sign in to manage your shortened links</p>
         </div>
@@ -291,6 +309,8 @@
             </div>
             <button type="submit" class="btn-submit">Create Account</button>
         </form>
+
+        <p class="public-link">Want to create a link without signing up? <a href="/">Create one here</a></p>
     </div>
 
     <!-- // ShortURL creature SVG -->
@@ -341,6 +361,10 @@
                     SwAnim.navigateTo(data.user.role === 'ADMIN' ? '/admin' : '/dashboard');
                 }
             } catch(e){}
+        }
+
+        if (window.location.hash === '#register') {
+            switchTab('register');
         }
         checkAuth();
 
@@ -456,8 +480,9 @@
             }
         });
     </script>
-    <div class="footer">
+    <!-- <div class="footer">
         Made with ❤️ by <a href="https://github.com/sudhanshu-on" target="_blank" rel="noopener noreferrer">sudhanshu-on</a>
-    </div>
+        gives a vibe of a coded vibe so removed
+    </div> -->
 </body>
 </html>

@@ -1,4 +1,4 @@
-# URL Shortener Backend --- Load Testing & MongoDB Troubleshooting Summary
+# ShortURL Backend --- Load Testing & MongoDB Troubleshooting Summary
 
 ## 1. Project Context
 
