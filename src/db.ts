@@ -166,11 +166,16 @@ export async function saveUrlRecord(record: UrlRecord): Promise<UrlRecord> {
     };
 }
 
-export async function getUrlRecord(shortCode: string): Promise<UrlRecord | null> {
+export async function getUrlRecord(
+    shortCode: string
+): Promise<UrlRecord | null> {
     await initDatabase();
-    if (mongoose.connection.readyState !== 1) return null; 
+
     const doc = await UrlModel.findOne({ shortCode }).lean();
-    if (!doc) return null;
+
+    if (!doc) {
+        return null;
+    }
 
     return {
         id: doc._id.toString(),
