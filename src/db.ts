@@ -67,7 +67,7 @@ declare global {
     var mongooseCache: MongooseCache | undefined;
 }
 
-const cached: MongooseCache = global.mongooseCache || {
+const cached: MongooseCache = global.mongooseCache ?? {
     conn: null,
     promise: null
 };
@@ -96,7 +96,7 @@ export async function initDatabase(): Promise<typeof mongoose | null> {
     console.log("[Database] Creating MongoDB connection...");
 
     cached.promise = mongoose.connect(MONGODB_URI, {
-        maxPoolSize: 10,
+        maxPoolSize: 5,
         minPoolSize: 0,
 
         serverSelectionTimeoutMS: 5000,
